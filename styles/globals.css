@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap');
+
+html {
+  background: #edf1ea;
+}
+
+body {
+  color: #14211a;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13.5px;
+  background: #f3f6f1;
+  border: 1.5px solid #d3dbd0;
+  white-space: nowrap;
+}
+.badge.v5 { background: #b58a1e; border-color: #b58a1e; color: #1a1405; }
+.badge.v4 { background: #e2eee3; border-color: #1f7a45; }
+.badge.v2 { background: #fbe9e7; border-color: #b3261e; color: #b3261e; }
