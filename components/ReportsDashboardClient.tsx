@@ -2,8 +2,10 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { ReportRow } from '@/lib/reports';
-import { keyOf } from '@/lib/reports';
+import { keyOf, deleteReport } from '@/lib/reports';
+import { createClient } from '@/lib/supabase/client';
 import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES } from '@/lib/formModel';
 
 interface Props {
@@ -11,36 +13,55 @@ interface Props {
 }
 
 export default function ReportsDashboardClient({ initialReports }: Props) {
+  const router = useRouter();
+  const [reports, setReports] = useState<ReportRow[]>(initialReports);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selectedObservador, setSelectedObservador] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('');
   const [selectedNivel, setSelectedNivel] = useState('');
   const [selectedValoracion, setSelectedValoracion] = useState('');
 
+  async function handleDelete(id: string, nombre: string) {
+    const confirmed = window.confirm(`¿Eliminar el informe de "${nombre}"? Esta acción no se puede deshacer.`);
+    if (!confirmed) return;
+    setDeletingId(id);
+    try {
+      const supabase = createClient();
+      await deleteReport(supabase, id);
+      setReports((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      alert('Error al eliminar el informe. Intenta de nuevo.');
+      console.error(err);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   // 1. Estadísticas globales (sin filtrar)
-  const totalReports = initialReports.length;
+  const totalReports = reports.length;
 
   const uniquePlayerKeys = useMemo(() => {
     const keys = new Set<string>();
-    initialReports.forEach(r => {
+    reports.forEach(r => {
       const k = keyOf(r.data);
       if (k) keys.add(k);
     });
     return keys.size;
-  }, [initialReports]);
+  }, [reports]);
 
   const ficharCount = useMemo(() => {
-    return initialReports.filter(r => r.data.valoracion && String(r.data.valoracion).startsWith('5.')).length;
-  }, [initialReports]);
+    return reports.filter(r => r.data.valoracion && String(r.data.valoracion).startsWith('5.')).length;
+  }, [reports]);
 
   const interesanteCount = useMemo(() => {
-    return initialReports.filter(r => r.data.valoracion && String(r.data.valoracion).startsWith('4.')).length;
-  }, [initialReports]);
+    return reports.filter(r => r.data.valoracion && String(r.data.valoracion).startsWith('4.')).length;
+  }, [reports]);
 
   // Distribución por nivel
   const levelDistribution = useMemo(() => {
     const dist: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    initialReports.forEach(r => {
+    reports.forEach(r => {
       const tipo = r.data.tipo_informe || '';
       if (tipo.includes('N1') || tipo.includes('general')) dist[1]++;
       else if (tipo.includes('N2') || tipo.includes('deportivo')) dist[2]++;
@@ -50,7 +71,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
       else dist[1]++; // default
     });
     return dist;
-  }, [initialReports]);
+  }, [reports]);
 
   // Distribución por valoración
   const valDistribution = useMemo(() => {
@@ -61,7 +82,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
       DESCARTAR: 0,
       OTRO: 0
     };
-    initialReports.forEach(r => {
+    reports.forEach(r => {
       const val = String(r.data.valoracion || '');
       if (val.includes('FICHAR')) dist.FICHAR++;
       else if (val.includes('INTERESANTE')) dist.INTERESANTE++;
@@ -70,11 +91,11 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
       else dist.OTRO++;
     });
     return dist;
-  }, [initialReports]);
+  }, [reports]);
 
   // 2. Informes filtrados
   const filteredReports = useMemo(() => {
-    return initialReports.filter(r => {
+    return reports.filter(r => {
       const d = r.data;
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -97,7 +118,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
 
       return true;
     });
-  }, [initialReports, search, selectedObservador, selectedCategoria, selectedNivel, selectedValoracion]);
+  }, [reports, search, selectedObservador, selectedCategoria, selectedNivel, selectedValoracion]);
 
   // Helper de badges para valoración
   const renderValBadge = (val?: string) => {
@@ -426,6 +447,20 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
                         >
                           Tablero
                         </Link>
+                        <button
+                          onClick={() => handleDelete(r.id, d.nombre || 'jugador')}
+                          disabled={deletingId === r.id}
+                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 transition-colors disabled:opacity-50"
+                          title="Eliminar informe"
+                        >
+                          {deletingId === r.id ? (
+                            <span className="animate-pulse">...</span>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
+                        </button>
                       </td>
                     </tr>
                   );

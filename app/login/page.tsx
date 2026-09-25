@@ -23,6 +23,7 @@ function LoginForm() {
   const params = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +38,9 @@ function LoginForm() {
       setError(
         error.message === 'Invalid login credentials'
           ? 'Correo o contraseña incorrectos.'
-          : 'No se pudo iniciar sesión. Inténtalo de nuevo.'
+          : error.message === 'Email not confirmed'
+          ? 'El correo aún no está confirmado. Pide al administrador que lo confirme en el panel de Supabase.'
+          : `Error: ${error.message}`
       );
       return;
     }
@@ -79,16 +82,37 @@ function LoginForm() {
         <label className="block text-sm font-medium mb-1" htmlFor="password">
           Contraseña
         </label>
-        <input
-          id="password"
-          type="password"
-          required
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-5 rounded-lg border border-line px-3 py-2 focus:outline-none focus:ring-2 focus:ring-turf"
-          placeholder="••••••••"
-        />
+        <div className="relative mb-5">
+          <input
+            id="password"
+            type={showPassword ? 'text' : 'password'}
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-lg border border-line px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-turf"
+            placeholder="••••••••"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors"
+            aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          >
+            {showPassword ? (
+              /* Ojo abierto (visible) */
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            ) : (
+              /* Ojo tachado (oculto) */
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.97 9.97 0 012.05-3.41M6.53 6.53A9.97 9.97 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.97 9.97 0 01-4.423 5.357M3 3l18 18" />
+              </svg>
+            )}
+          </button>
+        </div>
 
         {error && (
           <p role="alert" className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
