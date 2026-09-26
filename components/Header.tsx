@@ -10,8 +10,8 @@ export default function Header({ email, role = 'admin' }: { email: string; role?
 
   async function signOut() {
     const supabase = createClient();
-    await supabase.auth.signOut();
-    router.replace('/login');
+    await supabase.auth.signOut().catch(() => undefined);
+    router.replace('/');
     router.refresh();
   }
 
