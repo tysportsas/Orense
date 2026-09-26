@@ -26,6 +26,14 @@ para agregarlos después (ver "Qué falta" al final).
    user**, una por cada persona (correo + contraseña provisional). No hay
    pantalla de "crear cuenta" en la app — las cuentas las da la Secretaría
    Técnica.
+5. Para cada usuario, en el panel de **Authentication → Users → [usuario] →
+   Edit user**, puedes añadir en **user metadata** el campo `role` con uno
+   de estos valores:
+   - `admin`: acceso total.
+   - `scout`: puede crear y editar informes, ver dashboard y campograma.
+   - `viewer`: solo lectura (dashboard, campograma y jugadores).
+   Si el campo `role` no existe, la app lo considera `admin` para mantener
+   compatibilidad con usuarios existentes.
 
 ## 2. Subir el código a GitHub
 

@@ -9,6 +9,7 @@
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { normalizeRole, hasRouteAccess } from '@/lib/auth';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers } });
@@ -53,6 +54,18 @@ export async function middleware(request: NextRequest) {
     url.pathname = '/';
     url.searchParams.delete('next');
     return NextResponse.redirect(url);
+  }
+
+  if (user) {
+    const role = normalizeRole(user.user_metadata?.role);
+    const path = request.nextUrl.pathname;
+
+    if (!hasRouteAccess(path, role)) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;

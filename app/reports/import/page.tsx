@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import Header from '@/components/Header';
 import ImportReportsClient from '@/components/ImportReportsClient';
+import { normalizeRole } from '@/lib/auth';
 
 export default async function ImportPage() {
   const supabase = createClient();
@@ -10,9 +11,12 @@ export default async function ImportPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
+  const role = normalizeRole(user.user_metadata?.role);
+  if (role !== 'admin') redirect('/');
+
   return (
     <div className="min-h-screen bg-gray-50/50 pb-12">
-      <Header email={user.email ?? ''} />
+      <Header email={user.email ?? ''} role={role} />
       <main className="max-w-4xl mx-auto px-4 py-6">
         <div className="mb-6">
           <h2 className="font-display font-bold text-3xl text-gray-900 mb-1">

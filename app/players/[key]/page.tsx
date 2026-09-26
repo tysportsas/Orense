@@ -4,6 +4,7 @@ import { listReportsForPlayer } from '@/lib/reports';
 import { LEVELS, NACIONALIDADES, nivel, ageOf, fmtDate, fmtTs, shortVal, radarAxes, visibleSections } from '@/lib/formModel';
 import Header from '@/components/Header';
 import PlayerDashboardClient from '@/components/PlayerDashboardClient';
+import { normalizeRole } from '@/lib/auth';
 
 const RADAR_GROUPS = [
   { id: 'tec', title: 'Atributos técnicos', secs: ['p_dep_tec', 'f_tec'] },
@@ -19,6 +20,13 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
     data: { user }
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+
+  const role = normalizeRole(user.user_metadata?.role);
+  if (role === 'viewer' || role === 'scout' || role === 'admin') {
+    // La vista de jugador es accesible para todo usuario autenticado con permisos de lectura.
+  } else {
+    redirect('/');
+  }
 
   const playerKey = decodeURIComponent(params.key);
   const reports = await listReportsForPlayer(supabase, playerKey);
@@ -63,7 +71,7 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
 
   return (
     <div>
-      <Header email={user.email ?? ''} />
+      <Header email={user.email ?? ''} role={role} />
       <PlayerDashboardClient
         nombre={prof.nombre || 'Jugador'}
         foto={prof.foto}

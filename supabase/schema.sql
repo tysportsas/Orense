@@ -94,5 +94,11 @@ create policy "Observadores autenticados borran adjuntos"
 --    desde el panel: Authentication → Users → Add user, uno por cada
 --    observador (Daniel Arango, Javier Semeler...), con su correo y una
 --    contraseña provisional que cada quien cambiará en su primer ingreso.
+--    En el mismo panel puedes declarar el campo `role` dentro de user
+--    metadata para controlar permisos en la app:
+--      - admin: acceso total.
+--      - scout: crea/edita informes y ve dashboard/campograma.
+--      - viewer: solo lectura.
+--    Si no se define, la app asume `admin` por compatibilidad.
 --    No hay registro público: la app solo tiene pantalla de inicio de
 --    sesión, nunca de "crear cuenta".

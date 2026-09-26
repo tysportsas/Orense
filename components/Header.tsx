@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-export default function Header({ email }: { email: string }) {
+export default function Header({ email, role = 'admin' }: { email: string; role?: string }) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -26,6 +26,11 @@ export default function Header({ email }: { email: string }) {
     </Link>
   );
 
+  const canViewDashboard = role === 'admin' || role === 'scout' || role === 'viewer';
+  const canViewCampograma = role === 'admin' || role === 'scout' || role === 'viewer';
+  const canCreateReports = role === 'admin' || role === 'scout';
+  const canImportReports = role === 'admin';
+
   return (
     <header className="bg-[#0f3a22] text-white">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
@@ -38,10 +43,10 @@ export default function Header({ email }: { email: string }) {
         </div>
         <nav className="flex items-center gap-2">
           {tab('/', 'Jugadores')}
-          {tab('/dashboard', 'Dashboard')}
-          {tab('/campograma', 'Campograma')}
-          {tab('/reports/new', 'Nuevo informe')}
-          {tab('/reports/import', 'Importar')}
+          {canViewDashboard && tab('/dashboard', 'Dashboard')}
+          {canViewCampograma && tab('/campograma', 'Campograma')}
+          {canCreateReports && tab('/reports/new', 'Nuevo informe')}
+          {canImportReports && tab('/reports/import', 'Importar')}
         </nav>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-white/70 hidden sm:inline">{email}</span>
