@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getObservedPlayersOptions } from '@/lib/reports';
 import Header from '@/components/Header';
@@ -14,11 +13,8 @@ export default async function NewReportPage({
   const {
     data: { user }
   } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
 
-  const role = normalizeRole(user.user_metadata?.role);
-  if (role !== 'admin' && role !== 'scout') redirect('/');
-
+  const role = normalizeRole(user?.user_metadata?.role);
   const observedPlayers = await getObservedPlayersOptions(supabase);
 
   // Si viene con parametro nombre, intentar buscar la data previa de ese jugador
@@ -34,7 +30,7 @@ export default async function NewReportPage({
 
   return (
     <div>
-      <Header email={user.email ?? ''} role={role} />
+      <Header email={user?.email ?? ''} role={role} />
       <main className="max-w-3xl mx-auto px-4 py-6">
         <h2 className="font-display font-bold text-3xl mb-6">Nuevo informe</h2>
         <DynamicForm initial={initial} observedPlayers={observedPlayers} />

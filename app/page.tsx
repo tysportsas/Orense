@@ -4,7 +4,6 @@
 // una sesión válida de Supabase. Si no la hay, nunca se renderiza esto —
 // la persona ya fue redirigida a /login antes de que este código corra.
 
-import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { listPlayers } from '@/lib/reports';
 import Header from '@/components/Header';
@@ -16,14 +15,13 @@ export default async function HomePage() {
   const {
     data: { user }
   } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
 
-  const role = normalizeRole(user.user_metadata?.role);
+  const role = normalizeRole(user?.user_metadata?.role);
   const players = await listPlayers(supabase);
 
   return (
     <div>
-      <Header email={user.email ?? ''} role={role} />
+      <Header email={user?.email ?? ''} role={role} />
       <main className="max-w-6xl mx-auto px-4 py-6">
         <h2 className="font-display font-bold text-3xl mb-1">Jugadores observados</h2>
         <p className="text-muted mb-6">

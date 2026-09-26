@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { listAllReports } from '@/lib/reports';
 import Header from '@/components/Header';
@@ -10,14 +9,13 @@ export default async function DashboardPage() {
   const {
     data: { user }
   } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
 
-  const role = normalizeRole(user.user_metadata?.role);
+  const role = normalizeRole(user?.user_metadata?.role);
   const reports = await listAllReports(supabase);
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-12">
-      <Header email={user.email ?? ''} role={role} />
+      <Header email={user?.email ?? ''} role={role} />
       <main className="max-w-6xl mx-auto px-4 py-6">
         <div className="mb-6">
           <h2 className="font-display font-bold text-3xl text-gray-900 mb-1">

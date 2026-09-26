@@ -1,4 +1,4 @@
-import { redirect, notFound } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { listReportsForPlayer } from '@/lib/reports';
 import { LEVELS, NACIONALIDADES, nivel, ageOf, fmtDate, fmtTs, shortVal, radarAxes, visibleSections } from '@/lib/formModel';
@@ -19,15 +19,8 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
   const {
     data: { user }
   } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
 
-  const role = normalizeRole(user.user_metadata?.role);
-  if (role === 'viewer' || role === 'scout' || role === 'admin') {
-    // La vista de jugador es accesible para todo usuario autenticado con permisos de lectura.
-  } else {
-    redirect('/');
-  }
-
+  const role = normalizeRole(user?.user_metadata?.role);
   const playerKey = decodeURIComponent(params.key);
   const reports = await listReportsForPlayer(supabase, playerKey);
   if (!reports.length) notFound();
@@ -71,7 +64,7 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
 
   return (
     <div>
-      <Header email={user.email ?? ''} role={role} />
+      <Header email={user?.email ?? ''} role={role} />
       <PlayerDashboardClient
         nombre={prof.nombre || 'Jugador'}
         foto={prof.foto}
