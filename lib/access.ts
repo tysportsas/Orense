@@ -23,28 +23,28 @@ export type AccessCode = {
 };
 
 export const DEFAULT_ACCESS_PERMISSIONS: AccessPermissions = {
-  players: true,
-  dashboard: true,
-  campograma: true,
-  reports: true,
-  import: true,
-  edit: true,
-  download: true,
-  print: true
+  players: false,
+  dashboard: false,
+  campograma: false,
+  reports: false,
+  import: false,
+  edit: false,
+  download: false,
+  print: false
 };
 
 export function normalizePermissions(
   permissions?: Partial<AccessPermissions>
 ): AccessPermissions {
   return {
-    players: Boolean(permissions?.players ?? true),
-    dashboard: Boolean(permissions?.dashboard ?? true),
-    campograma: Boolean(permissions?.campograma ?? true),
-    reports: Boolean(permissions?.reports ?? true),
-    import: Boolean(permissions?.import ?? true),
-    edit: Boolean(permissions?.edit ?? true),
-    download: Boolean(permissions?.download ?? true),
-    print: Boolean(permissions?.print ?? true)
+    players: Boolean(permissions?.players ?? false),
+    dashboard: Boolean(permissions?.dashboard ?? false),
+    campograma: Boolean(permissions?.campograma ?? false),
+    reports: Boolean(permissions?.reports ?? false),
+    import: Boolean(permissions?.import ?? false),
+    edit: Boolean(permissions?.edit ?? false),
+    download: Boolean(permissions?.download ?? false),
+    print: Boolean(permissions?.print ?? false)
   };
 }
 

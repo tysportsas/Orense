@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { findAccessCodeByCredentials, setActiveAccessSession } from '@/lib/access';
 
 export default function LoginPage() {
@@ -32,12 +31,12 @@ export default function LoginPage() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(160,213,183,0.2),_transparent_35%)]" />
           <div className="relative z-10">
             <div className="mb-10 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm">
-                <span className="font-display text-2xl font-black">O</span>
+              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm">
+                <img src="/orense-crest.png" alt="Escudo de Orense SC" className="h-10 w-10 object-contain" />
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-emerald-100/80">Orense SC</p>
-                <h2 className="font-display text-2xl font-bold leading-none">Método de Scouting</h2>
+                <h2 className="font-display text-2xl font-bold leading-none">Secretaría Técnica</h2>
               </div>
             </div>
 
@@ -111,12 +110,13 @@ export default function LoginPage() {
               </p>
             )}
 
-            <div className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-[#dfe7df] bg-white/70 px-4 py-3 text-sm text-[#0f3a22]/75">
-              <span>¿Necesitás acceso administrativo?</span>
-              <Link href="/admin" className="font-bold text-[#0f3a22] underline decoration-2 underline-offset-4">
-                Panel admin
-              </Link>
+            <div className="mt-6 rounded-2xl border border-[#dfe7df] bg-white/70 px-4 py-3 text-sm text-[#0f3a22]/75">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#0f3a22]/60">Acceso</p>
+              <p className="mt-1 font-medium text-[#0f3a22]">
+                Tu acceso y los módulos visibles dependen del perfil autorizado asignado por administración.
+              </p>
             </div>
+
           </div>
         </section>
       </div>

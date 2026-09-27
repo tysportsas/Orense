@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   clearAdminSession,
   createAccessCode,
@@ -14,6 +15,8 @@ import {
   type AccessCode,
   type AccessPermissions
 } from '@/lib/access';
+import { createClient } from '@/lib/supabase/client';
+import { normalizeRole } from '@/lib/auth';
 
 const permissionGroups: Array<{ key: keyof AccessPermissions; label: string }> = [
   { key: 'players', label: 'Ver jugadores' },
@@ -27,6 +30,7 @@ const permissionGroups: Array<{ key: keyof AccessPermissions; label: string }> =
 ];
 
 export default function AdminPage() {
+  const router = useRouter();
   const [unlocked, setUnlocked] = useState(false);
   const [masterPassword, setMasterPassword] = useState('');
   const [codes, setCodes] = useState<AccessCode[]>([]);
@@ -37,12 +41,46 @@ export default function AdminPage() {
   });
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [checkingAccess, setCheckingAccess] = useState(true);
 
   useEffect(() => {
-    const nextUnlocked = isAdminUnlocked();
-    setUnlocked(nextUnlocked);
-    setCodes(readAccessCodes());
-  }, []);
+    let mounted = true;
+
+    const ensureAdminAccess = async () => {
+      const supabase = createClient();
+      const {
+        data: { user }
+      } = await supabase.auth.getUser();
+
+      if (!mounted) return;
+
+      if (!user || normalizeRole(user.user_metadata?.role) !== 'admin') {
+        router.replace('/');
+        return;
+      }
+
+      const nextUnlocked = isAdminUnlocked();
+      setUnlocked(nextUnlocked);
+      setCodes(readAccessCodes());
+      setCheckingAccess(false);
+    };
+
+    ensureAdminAccess();
+
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
+
+  if (checkingAccess) {
+    return (
+      <main className="mx-auto max-w-xl px-4 py-16">
+        <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
+          <p className="text-sm text-muted">Verificando acceso administrativo…</p>
+        </div>
+      </main>
+    );
+  }
 
   const activeCodes = useMemo(
     () => codes.filter((item) => item.enabled).length,

@@ -7,11 +7,12 @@ import {
   clearAccessSession,
   DEFAULT_ACCESS_PERMISSIONS,
   getCurrentAccessSession,
+  isAdminUnlocked,
   type AccessPermissions
 } from '@/lib/access';
 import { createClient } from '@/lib/supabase/client';
 
-export default function Header({ email, role = 'admin' }: { email: string; role?: string }) {
+export default function Header({ email, role = 'viewer' }: { email: string; role?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const [permissions, setPermissions] = useState<AccessPermissions>(DEFAULT_ACCESS_PERMISSIONS);
@@ -45,6 +46,7 @@ export default function Header({ email, role = 'admin' }: { email: string; role?
   const canViewCampograma = permissions.campograma;
   const canCreateReports = permissions.reports;
   const canImportReports = permissions.import;
+  const canSeeAdmin = role === 'admin' || isAdminUnlocked();
 
   return (
     <header className="bg-[#0f3a22] text-white">
@@ -52,8 +54,8 @@ export default function Header({ email, role = 'admin' }: { email: string; role?
         <div className="flex items-center gap-3">
           <img src="/orense-crest.png" alt="Escudo de Orense S.C." className="h-10 w-auto" />
           <div>
-            <h1 className="font-display font-bold text-xl leading-none">Método Orense de Scouting</h1>
-            <p className="text-xs text-white/70">Secretaría Técnica, Orense SC</p>
+            <h1 className="font-display font-bold text-xl leading-none">Secretaría Técnica</h1>
+            <p className="text-xs text-white/70">Orense SC</p>
           </div>
         </div>
         <nav className="flex items-center gap-2">
@@ -62,7 +64,7 @@ export default function Header({ email, role = 'admin' }: { email: string; role?
           {canViewCampograma && tab('/campograma', 'Campograma')}
           {canCreateReports && tab('/reports/new', 'Nuevo informe')}
           {canImportReports && tab('/reports/import', 'Importar')}
-          {role === 'admin' && tab('/admin', 'Admin')}
+          {canSeeAdmin && tab('/admin', 'Admin')}
         </nav>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-white/70 hidden sm:inline">{email || 'Acceso autorizado'}</span>
