@@ -2,16 +2,30 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import {
+  clearAccessSession,
+  DEFAULT_ACCESS_PERMISSIONS,
+  getCurrentAccessSession,
+  type AccessPermissions
+} from '@/lib/access';
 import { createClient } from '@/lib/supabase/client';
 
 export default function Header({ email, role = 'admin' }: { email: string; role?: string }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [permissions, setPermissions] = useState<AccessPermissions>(DEFAULT_ACCESS_PERMISSIONS);
+
+  useEffect(() => {
+    const access = getCurrentAccessSession();
+    setPermissions(access?.permissions ?? DEFAULT_ACCESS_PERMISSIONS);
+  }, [pathname]);
 
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut().catch(() => undefined);
-    router.replace('/');
+    clearAccessSession();
+    router.replace('/login');
     router.refresh();
   }
 
@@ -26,10 +40,11 @@ export default function Header({ email, role = 'admin' }: { email: string; role?
     </Link>
   );
 
-  const canViewDashboard = role === 'admin' || role === 'scout' || role === 'viewer';
-  const canViewCampograma = role === 'admin' || role === 'scout' || role === 'viewer';
-  const canCreateReports = role === 'admin' || role === 'scout';
-  const canImportReports = role === 'admin';
+  const canViewPlayers = permissions.players;
+  const canViewDashboard = permissions.dashboard;
+  const canViewCampograma = permissions.campograma;
+  const canCreateReports = permissions.reports;
+  const canImportReports = permissions.import;
 
   return (
     <header className="bg-[#0f3a22] text-white">
@@ -42,14 +57,15 @@ export default function Header({ email, role = 'admin' }: { email: string; role?
           </div>
         </div>
         <nav className="flex items-center gap-2">
-          {tab('/', 'Jugadores')}
+          {canViewPlayers && tab('/', 'Jugadores')}
           {canViewDashboard && tab('/dashboard', 'Dashboard')}
           {canViewCampograma && tab('/campograma', 'Campograma')}
           {canCreateReports && tab('/reports/new', 'Nuevo informe')}
           {canImportReports && tab('/reports/import', 'Importar')}
+          {role === 'admin' && tab('/admin', 'Admin')}
         </nav>
         <div className="flex items-center gap-3 text-sm">
-          <span className="text-white/70 hidden sm:inline">{email}</span>
+          <span className="text-white/70 hidden sm:inline">{email || 'Acceso autorizado'}</span>
           <button
             onClick={signOut}
             className="px-3 py-1.5 rounded-full border border-white/30 hover:bg-white/10"

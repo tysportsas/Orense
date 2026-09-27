@@ -61,12 +61,17 @@ export async function getReport(supabase: SupabaseClient, id: string): Promise<R
 }
 
 export async function createReport(supabase: SupabaseClient, data: ReportData): Promise<ReportRow> {
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  let userId: string | null = null;
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    userId = authData.user?.id ?? null;
+  } catch {
+    userId = null;
+  }
+
   const { data: row, error } = await supabase
     .from('reports')
-    .insert({ data, created_by: user?.id })
+    .insert({ data, created_by: userId })
     .select()
     .single();
   if (error) throw error;
@@ -74,12 +79,17 @@ export async function createReport(supabase: SupabaseClient, data: ReportData): 
 }
 
 export async function updateReport(supabase: SupabaseClient, id: string, data: ReportData): Promise<ReportRow> {
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  let userId: string | null = null;
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    userId = authData.user?.id ?? null;
+  } catch {
+    userId = null;
+  }
+
   const { data: row, error } = await supabase
     .from('reports')
-    .update({ data, updated_at: new Date().toISOString(), updated_by: user?.id })
+    .update({ data, updated_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
     .select()
     .single();

@@ -210,9 +210,13 @@ export const note = (title, text): Field => ({type: 'note', title, text});
 export const pyramid = (id, label, o: Partial<Field> = {}): Field => ({type: 'pyramid', id, label, ...o});
 export const photo = (id, label, o: Partial<Field> = {}): Field => ({type: 'photo', id, label, ...o});
 
-export const isF = d => FORM_CATS.includes(d.categoria);
-export const isP = d => PRO_CATS.includes(d.categoria);
-export const nivel = (d: ReportData): number => TIPOS.indexOf(d.tipo_informe) + 1;
+export const isF = d => FORM_CATS.includes(String(d?.categoria ?? '').trim().toUpperCase());
+export const isP = d => PRO_CATS.includes(String(d?.categoria ?? '').trim().toUpperCase());
+export const nivel = (d: ReportData): number => {
+  const value = d?.tipo_informe;
+  const index = typeof value === 'string' ? TIPOS.indexOf(value) : -1;
+  return index >= 0 ? index + 1 : 0;
+};
 
 export const SCALE_NOTE = 'Asigne la valoración que mejor represente el nivel observado del jugador en cada criterio, de acuerdo con la escala establecida y con base en la evidencia obtenida durante la observación.';
 export const FIRST_NOTE = 'Registra lo posible en una primera visualización; de lo contrario, completa en un informe posterior.';

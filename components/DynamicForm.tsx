@@ -105,10 +105,17 @@ export default function DynamicForm({
   function handleChange(field: Field, value: any) {
     setData((d) => {
       if (field.type === 'photo') {
-        if (value && typeof value === 'object' && '__fotoUrl' in value) {
-          return { ...d, foto_url: value.__fotoUrl || undefined };
+        if (typeof value === 'string') {
+          if (/^https?:\/\//i.test(value)) {
+            return { ...d, foto_url: value || undefined, foto: undefined };
+          }
+          return { ...d, foto: value || undefined, foto_url: undefined };
         }
-        return { ...d, foto: value || undefined };
+        if (value && typeof value === 'object' && '__fotoUrl' in value) {
+          const url = typeof value.__fotoUrl === 'string' ? value.__fotoUrl : '';
+          return { ...d, foto_url: url || undefined, foto: url ? undefined : d.foto };
+        }
+        return { ...d, foto: value || undefined, foto_url: undefined };
       }
       const next = { ...d };
       if (value == null || value === '') delete next[field.id!];
@@ -153,7 +160,8 @@ export default function DynamicForm({
       router.push(`/players/${key}`);
       router.refresh();
     } catch (e: any) {
-      setSaveError('No se pudo guardar el informe. Revisa tu conexión e inténtalo de nuevo.');
+      const detail = e?.message || 'No se pudo guardar el informe. Revisa tu conexión e inténtalo de nuevo.';
+      setSaveError(detail);
     } finally {
       setSaving(false);
     }

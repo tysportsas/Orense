@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Field } from '@/lib/formModel';
-import { cap } from '@/lib/formModel';
+import { cap, LEVELS } from '@/lib/formModel';
 import { createClient } from '@/lib/supabase/client';
 import { uploadPlayerPhoto, signedPhotoUrl } from '@/lib/reports';
 
@@ -16,6 +16,16 @@ const POS = ['ARQUERO', 'LATERAL', 'CENTRAL', 'MEDIOCENTRO', 'INTERIOR', 'EXTREM
 
 function optOf(o: any) {
   return typeof o === 'string' ? { v: o, l: o } : o;
+}
+
+function isValidHttpUrl(value: string) {
+  if (!value || !/^https?:\/\//i.test(value)) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 /** Campo de foto: es su propio componente (no un `case` con hooks) porque
@@ -32,6 +42,7 @@ function PhotoField({
 }) {
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const foto = data.foto as string | undefined;
   const fotoUrl = data.foto_url as string | undefined;
@@ -41,15 +52,19 @@ function PhotoField({
     const target = foto || fotoUrl;
     if (!target) {
       setPreview(null);
+      setPhotoError(null);
       return;
     }
-    if (/^https?:\/\//i.test(target)) {
+    if (isValidHttpUrl(target)) {
       setPreview(target);
+      setPhotoError(null);
       return;
     }
     const supabase = createClient();
     signedPhotoUrl(supabase, target).then((u) => {
-      if (alive) setPreview(u);
+      if (!alive) return;
+      setPreview(u);
+      setPhotoError(u ? null : 'La URL no es una imagen directa. Pegá una imagen pública con extensión .jpg, .png, .webp o .gif.');
     });
     return () => {
       alive = false;
@@ -60,12 +75,19 @@ function PhotoField({
     const file = e.target.files?.[0];
     if (!file) return;
     setBusy(true);
+    setPhotoError(null);
     try {
       const supabase = createClient();
       const path = await uploadPlayerPhoto(supabase, file);
       onChange(path);
       const url = await signedPhotoUrl(supabase, path);
       setPreview(url);
+    } catch (error: any) {
+      const message = error?.message || 'La foto no pudo subirse al almacenamiento.';
+      setPhotoError(
+        'No se pudo subir la foto al bucket de Supabase. Usá una URL directa de imagen pública o habilita permisos de Storage para este acceso.'
+      );
+      console.error('Photo upload error:', message);
     } finally {
       setBusy(false);
     }
@@ -80,9 +102,17 @@ function PhotoField({
       <div className="flex gap-4 items-start flex-wrap">
         <div className="w-28 h-36 rounded-lg border border-dashed border-line bg-surface2 grid place-items-center overflow-hidden text-muted text-xs text-center">
           {preview ? (
-            <img src={preview} alt="" className="w-full h-full object-cover" />
+            <img
+              src={preview}
+              alt=""
+              className="w-full h-full object-cover"
+              onError={() => {
+                setPreview(null);
+                setPhotoError('La URL no pudo cargarse como imagen directa. Pegá una URL de imagen pública válida.');
+              }}
+            />
           ) : foto || fotoUrl ? (
-            <span className="p-2 text-xs">Cargando foto…</span>
+            <span className="p-2 text-xs">{photoError || 'Cargando foto…'}</span>
           ) : (
             'Sin foto'
           )}
@@ -102,9 +132,22 @@ function PhotoField({
             type="text"
             placeholder="https://…"
             defaultValue={typeof data.foto_url === 'string' ? data.foto_url : ''}
-            onBlur={(e) => onChange({ __fotoUrl: e.target.value || null })}
+            onBlur={(e) => {
+              const value = (e.target.value || '').trim();
+              if (value && isValidHttpUrl(value)) {
+                setPreview(value);
+                setPhotoError(null);
+              }
+              onChange(value || null);
+              if (value && !isValidHttpUrl(value)) {
+                setPhotoError('Usá una URL real de imagen, por ejemplo: https://…/foto.jpg o una imagen directa con CDN.');
+              } else {
+                setPhotoError(null);
+              }
+            }}
             className="w-full rounded-lg border border-line px-3 py-2 mt-1"
           />
+          {photoError && <p className="text-sm text-red-700 mt-2">{photoError}</p>}
         </div>
       </div>
     </div>
@@ -337,6 +380,45 @@ export default function FieldRenderer({
           {err}
         </div>
       );
+
+    case 'pyramid': {
+      const options = LEVELS.map((level) => ({
+        v: level.label,
+        l: level.short,
+        d: level.sub,
+        bg: level.bg
+      }));
+
+      return (
+        <div>
+          {label}
+          {hint}
+          <div className="grid gap-2 mt-2">
+            {options.map((o) => {
+              const on = value === o.v;
+              return (
+                <button
+                  key={o.v}
+                  type="button"
+                  onClick={() => onChange(o.v)}
+                  className={`w-full text-left rounded-xl border px-3 py-3 transition ${
+                    on ? 'border-[#0f3a22] bg-[#0f3a22] text-white shadow-sm' : 'border-line bg-white text-gray-800 hover:border-[#0f3a22]/60'
+                  }`}
+                  style={on ? { backgroundColor: o.bg } : undefined}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-bold text-base">{o.l}</span>
+                    <span className="text-xs uppercase tracking-wide opacity-80">{o.v.split(' – ')[0]}</span>
+                  </div>
+                  <div className="text-sm mt-1 opacity-80">{o.d}</div>
+                </button>
+              );
+            })}
+          </div>
+          {err}
+        </div>
+      );
+    }
 
     case 'photo':
       return <PhotoField field={field} data={data} onChange={onChange} />;
