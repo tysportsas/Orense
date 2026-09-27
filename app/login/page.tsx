@@ -8,6 +8,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -87,13 +88,24 @@ export default function LoginPage() {
 
               <label className="block text-sm font-semibold text-[#0f3a22]">
                 Contraseña
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-[#d7e0d7] bg-white px-4 py-3 text-base outline-none transition focus:border-[#0f3a22] focus:ring-2 focus:ring-[#0f3a22]/10"
-                  placeholder="Ingresá tu contraseña"
-                />
+                <div className="relative mt-2">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className="w-full rounded-2xl border border-[#d7e0d7] bg-white px-4 py-3 pr-11 text-base outline-none transition focus:border-[#0f3a22] focus:ring-2 focus:ring-[#0f3a22]/10"
+                    placeholder="Ingresá tu contraseña"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-3 flex items-center rounded-md px-1 text-lg text-[#0f3a22]/70 transition hover:bg-[#0f3a22]/5 hover:text-[#0f3a22]"
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {showPassword ? '🙈' : '👁️'}
+                  </button>
+                </div>
               </label>
 
               <button

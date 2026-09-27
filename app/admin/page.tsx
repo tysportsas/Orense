@@ -15,8 +15,6 @@ import {
   type AccessCode,
   type AccessPermissions
 } from '@/lib/access';
-import { createClient } from '@/lib/supabase/client';
-import { normalizeRole } from '@/lib/auth';
 
 const permissionGroups: Array<{ key: keyof AccessPermissions; label: string }> = [
   { key: 'players', label: 'Ver jugadores' },
@@ -33,6 +31,8 @@ export default function AdminPage() {
   const router = useRouter();
   const [unlocked, setUnlocked] = useState(false);
   const [masterPassword, setMasterPassword] = useState('');
+  const [showMasterPassword, setShowMasterPassword] = useState(false);
+  const [showAccessPassword, setShowAccessPassword] = useState(false);
   const [codes, setCodes] = useState<AccessCode[]>([]);
   const [form, setForm] = useState({
     name: '',
@@ -41,46 +41,12 @@ export default function AdminPage() {
   });
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [checkingAccess, setCheckingAccess] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
-
-    const ensureAdminAccess = async () => {
-      const supabase = createClient();
-      const {
-        data: { user }
-      } = await supabase.auth.getUser();
-
-      if (!mounted) return;
-
-      if (!user || normalizeRole(user.user_metadata?.role) !== 'admin') {
-        router.replace('/');
-        return;
-      }
-
-      const nextUnlocked = isAdminUnlocked();
-      setUnlocked(nextUnlocked);
-      setCodes(readAccessCodes());
-      setCheckingAccess(false);
-    };
-
-    ensureAdminAccess();
-
-    return () => {
-      mounted = false;
-    };
-  }, [router]);
-
-  if (checkingAccess) {
-    return (
-      <main className="mx-auto max-w-xl px-4 py-16">
-        <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
-          <p className="text-sm text-muted">Verificando acceso administrativo…</p>
-        </div>
-      </main>
-    );
-  }
+    const nextUnlocked = isAdminUnlocked();
+    setUnlocked(nextUnlocked);
+    setCodes(readAccessCodes());
+  }, []);
 
   const activeCodes = useMemo(
     () => codes.filter((item) => item.enabled).length,
@@ -172,13 +138,24 @@ export default function AdminPage() {
           <form className="mt-6 space-y-4" onSubmit={unlock}>
             <label className="block text-sm font-semibold text-emerald-900">
               Contraseña maestra
-              <input
-                type="password"
-                value={masterPassword}
-                onChange={(event) => setMasterPassword(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-line bg-white px-3 py-2"
-                placeholder="Ingresá la contraseña de administrador"
-              />
+              <div className="relative mt-2">
+                <input
+                  type={showMasterPassword ? 'text' : 'password'}
+                  value={masterPassword}
+                  onChange={(event) => setMasterPassword(event.target.value)}
+                  className="w-full rounded-xl border border-line bg-white px-3 py-2 pr-11"
+                  placeholder="Ingresá la contraseña de administrador"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowMasterPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-3 flex items-center rounded-md px-1 text-lg text-[#0f3a22]/70 transition hover:bg-[#0f3a22]/5 hover:text-[#0f3a22]"
+                  aria-label={showMasterPassword ? 'Ocultar contraseña maestra' : 'Mostrar contraseña maestra'}
+                  title={showMasterPassword ? 'Ocultar contraseña maestra' : 'Mostrar contraseña maestra'}
+                >
+                  {showMasterPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </label>
 
             <button
@@ -311,13 +288,24 @@ export default function AdminPage() {
 
             <label className="block text-sm font-semibold text-emerald-900">
               Contraseña de acceso
-              <input
-                type="text"
-                value={form.password}
-                onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
-                className="mt-2 w-full rounded-xl border border-line bg-white px-3 py-2"
-                placeholder="Ej.: juan2026"
-              />
+              <div className="relative mt-2">
+                <input
+                  type={showAccessPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
+                  className="w-full rounded-xl border border-line bg-white px-3 py-2 pr-11"
+                  placeholder="Ej.: juan2026"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAccessPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-3 flex items-center rounded-md px-1 text-lg text-[#0f3a22]/70 transition hover:bg-[#0f3a22]/5 hover:text-[#0f3a22]"
+                  aria-label={showAccessPassword ? 'Ocultar contraseña de acceso' : 'Mostrar contraseña de acceso'}
+                  title={showAccessPassword ? 'Ocultar contraseña de acceso' : 'Mostrar contraseña de acceso'}
+                >
+                  {showAccessPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </label>
 
             <div className="space-y-3 pt-2">
