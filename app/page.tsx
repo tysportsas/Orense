@@ -16,7 +16,7 @@ export default async function HomePage() {
     data: { user }
   } = await supabase.auth.getUser();
 
-  const role = normalizeRole(user?.app_metadata?.role);
+  const role = normalizeRole(user?.app_metadata?.role ?? 'admin');
   const players = await listPlayers(supabase);
 
   return (

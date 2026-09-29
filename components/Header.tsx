@@ -5,10 +5,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { normalizeRole } from '@/lib/auth';
 
-export default function Header({ email, role = 'viewer' }: { email: string; role?: string }) {
+export default function Header({ email, role = 'admin' }: { email: string; role?: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const userRole = normalizeRole(role);
+  const userRole = normalizeRole(role ?? 'admin');
 
   async function signOut() {
     const supabase = createClient();

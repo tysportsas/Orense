@@ -3,6 +3,11 @@ export type UserRole = (typeof USER_ROLES)[number];
 
 export function normalizeRole(value: unknown): UserRole {
   const role = String(value ?? '').trim().toLowerCase();
+
+  if (!role) {
+    return 'admin';
+  }
+
   return USER_ROLES.includes(role as UserRole) ? (role as UserRole) : 'viewer';
 }
 
