@@ -47,7 +47,6 @@ export default function Header({ email, role = 'admin' }: { email: string; role?
           {tab('/campograma', 'Campograma')}
           {canSeeReports && tab('/reports/new', 'Nuevo informe')}
           {isAdmin && tab('/reports/import', 'Importar')}
-          {isAdmin && tab('/admin', 'Admin')}
         </nav>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-white/70 hidden sm:inline">{email || 'Acceso autorizado'}</span>
