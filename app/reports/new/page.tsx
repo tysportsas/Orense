@@ -14,7 +14,7 @@ export default async function NewReportPage({
     data: { user }
   } = await supabase.auth.getUser();
 
-  const role = normalizeRole(user?.user_metadata?.role);
+  const role = normalizeRole(user?.app_metadata?.role);
   const observedPlayers = await getObservedPlayersOptions(supabase);
 
   // Si viene con parametro nombre, intentar buscar la data previa de ese jugador

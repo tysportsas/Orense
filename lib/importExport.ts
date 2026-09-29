@@ -318,17 +318,37 @@ export async function bulkInsertReports(
   let failed = 0;
   const errors: string[] = [];
 
-  for (let i = 0; i < items.length; i++) {
-    try {
-      await createReport(supabase, items[i]);
-      success++;
-    } catch (err: any) {
-      failed++;
-      errors.push(`Error al insertar a ${items[i].nombre || 'registro'}: ${err.message || 'Error desconocido'}`);
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return {
+      success: 0,
+      failed: items.length,
+      errors: ['La sesión expiró o no tiene permiso para importar.']
     }
-    if (onProgress) {
-      onProgress(i + 1, items.length);
+  }
+
+  const batchSize = 100;
+  for (let start = 0; start < items.length; start += batchSize) {
+    const batch = items.slice(start, start + batchSize);
+    const { error } = await supabase
+      .from('reports')
+      .insert(batch.map((data) => ({ data, created_by: user.id })));
+
+    if (!error) {
+      success += batch.length;
+    } else {
+      for (const item of batch) {
+        try {
+          await createReport(supabase, item);
+          success++;
+        } catch (itemError: any) {
+          failed++;
+          errors.push(`Error al insertar a ${item.nombre || 'registro'}: ${itemError.message || 'Error desconocido'}`);
+        }
+      }
     }
+
+    onProgress?.(Math.min(start + batch.length, items.length), items.length);
   }
 
   return { success, failed, errors };

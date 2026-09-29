@@ -2,30 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import {
-  clearAccessSession,
-  DEFAULT_ACCESS_PERMISSIONS,
-  getCurrentAccessSession,
-  isAdminUnlocked,
-  type AccessPermissions
-} from '@/lib/access';
 import { createClient } from '@/lib/supabase/client';
+import { normalizeRole } from '@/lib/auth';
 
 export default function Header({ email, role = 'viewer' }: { email: string; role?: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [permissions, setPermissions] = useState<AccessPermissions>(DEFAULT_ACCESS_PERMISSIONS);
-
-  useEffect(() => {
-    const access = getCurrentAccessSession();
-    setPermissions(access?.permissions ?? DEFAULT_ACCESS_PERMISSIONS);
-  }, [pathname]);
+  const userRole = normalizeRole(role);
 
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut().catch(() => undefined);
-    clearAccessSession();
     router.replace('/login');
     router.refresh();
   }
@@ -41,12 +28,7 @@ export default function Header({ email, role = 'viewer' }: { email: string; role
     </Link>
   );
 
-  const canViewPlayers = permissions.players;
-  const canViewDashboard = permissions.dashboard;
-  const canViewCampograma = permissions.campograma;
-  const canCreateReports = permissions.reports;
-  const canImportReports = permissions.import;
-  const canSeeAdmin = role === 'admin' || isAdminUnlocked();
+  const canSeeReports = userRole === 'admin' || userRole === 'scout';
 
   return (
     <header className="bg-[#0f3a22] text-white">
@@ -59,12 +41,12 @@ export default function Header({ email, role = 'viewer' }: { email: string; role
           </div>
         </div>
         <nav className="flex items-center gap-2">
-          {canViewPlayers && tab('/', 'Jugadores')}
-          {canViewDashboard && tab('/dashboard', 'Dashboard')}
-          {canViewCampograma && tab('/campograma', 'Campograma')}
-          {canCreateReports && tab('/reports/new', 'Nuevo informe')}
-          {canImportReports && tab('/reports/import', 'Importar')}
-          {canSeeAdmin && tab('/admin', 'Admin')}
+          {tab('/', 'Jugadores')}
+          {tab('/dashboard', 'Dashboard')}
+          {tab('/campograma', 'Campograma')}
+          {canSeeReports && tab('/reports/new', 'Nuevo informe')}
+          {userRole === 'admin' && tab('/reports/import', 'Importar')}
+          {userRole === 'admin' && tab('/admin', 'Admin')}
         </nav>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-white/70 hidden sm:inline">{email || 'Acceso autorizado'}</span>

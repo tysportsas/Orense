@@ -10,7 +10,7 @@ export default async function CampogramaPage() {
     data: { user }
   } = await supabase.auth.getUser();
 
-  const role = normalizeRole(user?.user_metadata?.role);
+  const role = normalizeRole(user?.app_metadata?.role);
   const reports = await listAllReports(supabase);
 
   return (

@@ -9,16 +9,14 @@ export function normalizeRole(value: unknown): UserRole {
 export function hasRouteAccess(pathname: string, role: UserRole): boolean {
   const path = pathname.split('?')[0];
 
-  if (!path || path === '/login') return true;
+  if (path === '/login') return true;
   if (role === 'admin') return true;
 
-  const publicAllowed = ['/', '/dashboard', '/campograma'];
-  if (publicAllowed.includes(path)) return true;
-
-  if (path.startsWith('/players/')) return true;
+  const readOnlyRoutes = ['/', '/dashboard', '/campograma'];
+  if (readOnlyRoutes.includes(path) || path.startsWith('/players/')) return true;
 
   if (role === 'scout') {
-    return path === '/reports/new' || path === '/reports/import' || path.startsWith('/reports/');
+    return path === '/reports/new' || /^\/reports\/[^/]+\/edit$/.test(path);
   }
 
   return false;

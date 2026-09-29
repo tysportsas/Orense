@@ -27,10 +27,24 @@ export interface PlayerRow {
   last_report_at: string;
 }
 
+export interface LatestPlayerReport {
+  created_at: string;
+  data: ReportData;
+}
+
 export async function listAllReports(supabase: SupabaseClient): Promise<ReportRow[]> {
-  const { data, error } = await supabase.from('reports').select('*').order('created_at', { ascending: false });
-  if (error) throw error;
-  return data as ReportRow[];
+  const pageSize = 1000;
+  const rows: ReportRow[] = [];
+  for (let start = 0; ; start += pageSize) {
+    const { data, error } = await supabase
+      .from('reports')
+      .select('id, created_at, data')
+      .order('created_at', { ascending: false })
+      .range(start, start + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data as ReportRow[]));
+    if (data.length < pageSize) return rows;
+  }
 }
 
 export async function listPlayers(supabase: SupabaseClient): Promise<PlayerRow[]> {
@@ -42,16 +56,23 @@ export async function listPlayers(supabase: SupabaseClient): Promise<PlayerRow[]
   return data as PlayerRow[];
 }
 
-export async function listReportsForPlayer(supabase: SupabaseClient, playerKey: string): Promise<ReportRow[]> {
-  // player_key = nombre normalizado + fecha de nacimiento; se recalcula en
-  // el cliente porque Postgres no puede indexar fácilmente esa expresión
-  // sobre cada fila sin la vista, así que traemos todo y filtramos aquí
-  // solo cuando el equipo es pequeño. Para equipos grandes, conviene mover
-  // este filtro a una función RPC en Supabase.
-  const { data, error } = await supabase.from('reports').select('*').order('created_at', { ascending: false });
+export async function listLatestReportsForPlayers(supabase: SupabaseClient): Promise<LatestPlayerReport[]> {
+  const { data, error } = await supabase
+    .from('players_view')
+    .select('last_report_at, latest_data')
+    .not('latest_data', 'is', null)
+    .order('last_report_at', { ascending: false });
   if (error) throw error;
-  const rows = data as ReportRow[];
-  return rows.filter((r) => keyOf(r.data) === playerKey);
+  return (data as { last_report_at: string; latest_data: ReportData }[]).map((row) => ({
+    created_at: row.last_report_at,
+    data: row.latest_data
+  }));
+}
+
+export async function listReportsForPlayer(supabase: SupabaseClient, playerKey: string): Promise<ReportRow[]> {
+  const { data, error } = await supabase.rpc('reports_for_player', { p_player_key: playerKey });
+  if (error) throw error;
+  return data as ReportRow[];
 }
 
 export async function getReport(supabase: SupabaseClient, id: string): Promise<ReportRow | null> {
@@ -153,28 +174,19 @@ export interface ObservedPlayerOption {
 }
 
 export async function getObservedPlayersOptions(supabase: SupabaseClient): Promise<ObservedPlayerOption[]> {
-  const { data, error } = await supabase.from('reports').select('*').order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from('players_view')
+    .select('player_key, nombre, club, categoria, n_informes, latest_data')
+    .order('nombre');
   if (error) throw error;
-  const rows = data as ReportRow[];
-
-  const playerMap = new Map<string, ObservedPlayerOption>();
-  for (const r of rows) {
-    const k = keyOf(r.data);
-    if (!k || !r.data.nombre) continue;
-    if (!playerMap.has(k)) {
-      playerMap.set(k, {
-        key: k,
-        nombre: r.data.nombre,
-        club: r.data.club,
-        categoria: r.data.categoria,
-        n_informes: 1,
-        latestData: r.data
-      });
-    } else {
-      const existing = playerMap.get(k)!;
-      existing.n_informes++;
-    }
-  }
-
-  return Array.from(playerMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  return (data as (PlayerRow & { latest_data: ReportData })[])
+    .filter((player) => player.nombre && player.latest_data)
+    .map((player) => ({
+      key: player.player_key,
+      nombre: player.nombre,
+      club: player.club ?? undefined,
+      categoria: player.categoria ?? undefined,
+      n_informes: player.n_informes,
+      latestData: player.latest_data
+    }));
 }

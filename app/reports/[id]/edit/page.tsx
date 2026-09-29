@@ -11,7 +11,7 @@ export default async function EditReportPage({ params }: { params: { id: string 
     data: { user }
   } = await supabase.auth.getUser();
 
-  const role = normalizeRole(user?.user_metadata?.role);
+  const role = normalizeRole(user?.app_metadata?.role);
   const report = await getReport(supabase, params.id);
   if (!report) notFound();
 

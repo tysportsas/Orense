@@ -1,29 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { findAccessCodeByCredentials, setActiveAccessSession } from '@/lib/access';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const access = findAccessCodeByCredentials(username, password);
-    if (!access) {
-      setError('El usuario o la contraseña no coinciden con una credencial autorizada.');
-      return;
-    }
-
-    setActiveAccessSession(access);
-    router.push('/');
-    router.refresh();
-  };
+  useEffect(() => {
+    router.replace('/');
+  }, [router]);
 
   return (
     <main className="min-h-screen bg-[#eef1eb] px-4 py-10 text-[#0f3a22]">
@@ -51,7 +36,7 @@ export default function LoginPage() {
                 Decide.
               </h1>
               <p className="text-base text-emerald-50/80">
-                Panel seguro para usuarios autorizados del equipo con permisos configurados por administración.
+                Acceso directo habilitado para la aplicación.
               </p>
             </div>
           </div>
@@ -59,7 +44,7 @@ export default function LoginPage() {
           <div className="relative z-10 flex items-center justify-between rounded-2xl border border-white/15 bg-white/5 p-4 backdrop-blur-sm">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-emerald-100/80">Acceso</p>
-              <p className="mt-1 text-lg font-semibold">Usuarios autorizados</p>
+              <p className="mt-1 text-lg font-semibold">Directo</p>
             </div>
             <div className="rounded-full bg-emerald-400/20 px-3 py-1 text-sm font-semibold text-emerald-100">
               Online
@@ -68,67 +53,10 @@ export default function LoginPage() {
         </section>
 
         <section className="flex items-center justify-center bg-[#f4f6f2] p-6 sm:p-10">
-          <div className="w-full max-w-md">
-            <div className="mb-8 text-center lg:text-left">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0f3a22]/60">Bienvenido</p>
-              <h2 className="mt-2 font-display text-4xl font-black text-[#0f3a22]">Iniciar sesión</h2>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <label className="block text-sm font-semibold text-[#0f3a22]">
-                Usuario
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-[#d7e0d7] bg-white px-4 py-3 text-base outline-none transition focus:border-[#0f3a22] focus:ring-2 focus:ring-[#0f3a22]/10"
-                  placeholder="Ej.: daniel.arango"
-                />
-              </label>
-
-              <label className="block text-sm font-semibold text-[#0f3a22]">
-                Contraseña
-                <div className="relative mt-2">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    className="w-full rounded-2xl border border-[#d7e0d7] bg-white px-4 py-3 pr-11 text-base outline-none transition focus:border-[#0f3a22] focus:ring-2 focus:ring-[#0f3a22]/10"
-                    placeholder="Ingresá tu contraseña"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute inset-y-0 right-3 flex items-center rounded-md px-1 text-lg text-[#0f3a22]/70 transition hover:bg-[#0f3a22]/5 hover:text-[#0f3a22]"
-                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                    title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                  >
-                    {showPassword ? '🙈' : '👁️'}
-                  </button>
-                </div>
-              </label>
-
-              <button
-                type="submit"
-                className="w-full rounded-2xl bg-[#0f3a22] px-4 py-3 text-base font-bold text-white shadow-[0_12px_24px_rgba(15,58,34,0.2)] transition hover:bg-[#123f2b]"
-              >
-                Entrar a la app
-              </button>
-            </form>
-
-            {error && (
-              <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-3 text-sm font-medium text-red-700">
-                {error}
-              </p>
-            )}
-
-            <div className="mt-6 rounded-2xl border border-[#dfe7df] bg-white/70 px-4 py-3 text-sm text-[#0f3a22]/75">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#0f3a22]/60">Acceso</p>
-              <p className="mt-1 font-medium text-[#0f3a22]">
-                Tu acceso y los módulos visibles dependen del perfil autorizado asignado por administración.
-              </p>
-            </div>
-
+          <div className="w-full max-w-md text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0f3a22]/60">Bienvenido</p>
+            <h2 className="mt-2 font-display text-4xl font-black text-[#0f3a22]">Redirigiendo…</h2>
+            <p className="mt-4 text-sm text-[#0f3a22]/75">Se está abriendo la aplicación sin requerir usuario y contraseña.</p>
           </div>
         </section>
       </div>

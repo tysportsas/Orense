@@ -1,119 +1,56 @@
-# Método Orense de Scouting — versión con Supabase + GitHub + Vercel
+# Método Orense de Scouting
 
-Esta es la misma app de scouting (login obligatorio, informes N1 a N5,
-tablero por jugador con gráficos de araña), pero ahora con un backend real:
+Aplicación Next.js para gestionar informes de scouting, jugadores, dashboard y campograma. Supabase provee autenticación, base de datos compartida y almacenamiento.
 
-- **Supabase**: base de datos compartida (todos los observadores ven los
-  mismos informes) y autenticación (nadie entra sin su usuario y clave).
-- **GitHub**: guarda el código.
-- **Vercel**: aloja la app y le da un enlace público.
+## Supabase
 
-No incluye todavía el **PDF descargable** ni el **informe completo** de la
-versión de un solo archivo — la maqueta y el flujo de datos están listos
-para agregarlos después (ver "Qué falta" al final).
+1. En un proyecto Supabase, abre **SQL Editor** y ejecuta `supabase/schema.sql`. El script crea o actualiza la tabla, la vista segura, el RPC de consulta por jugador, los índices y las políticas RLS/Storage.
+2. En **Settings → API**, copia **Project URL** y **anon public key**.
+3. En **Authentication → Users**, crea las cuentas autorizadas. No hay registro público.
+4. En cada usuario, asigna `role` en **App Metadata**, nunca en User Metadata. Valores admitidos:
+   - `admin`: acceso completo, importación y borrado.
+   - `scout`: consulta, creación y edición de informes; acceso a dashboard y campograma.
+   - `viewer`: solo lectura de jugadores, informes, dashboard y campograma.
 
-## 1. Crear el proyecto en Supabase
+Si el rol no existe o no es válido, el sistema aplica `viewer`. Asigna el primer `admin` desde Supabase antes de entrar en `/admin`. Para usuarios existentes, migra el rol de User Metadata a App Metadata y elimina el campo antiguo. Los cambios de rol requieren iniciar sesión de nuevo para renovar el token.
 
-1. Entra a [supabase.com](https://supabase.com) → **New project**. Elige
-   nombre, contraseña de la base de datos y región (la más cercana a Ecuador).
-2. Cuando el proyecto esté listo, ve a **SQL Editor** → **New query**, pega
-   todo el contenido de [`supabase/schema.sql`](./supabase/schema.sql) y
-   dale **Run**. Esto crea la tabla de informes, la vista de jugadores, las
-   reglas de seguridad (RLS) y los buckets de fotos y adjuntos.
-3. Ve a **Settings → API** y copia dos valores: **Project URL** y
-   **anon public key**. Los necesitas en el paso 3.
-4. Crea las cuentas de los observadores: **Authentication → Users → Add
-   user**, una por cada persona (correo + contraseña provisional). No hay
-   pantalla de "crear cuenta" en la app — las cuentas las da la Secretaría
-   Técnica.
-5. Para cada usuario, en el panel de **Authentication → Users → [usuario] →
-   Edit user**, puedes añadir en **user metadata** el campo `role` con uno
-   de estos valores:
-   - `admin`: acceso total.
-   - `scout`: puede crear y editar informes, ver dashboard y campograma.
-   - `viewer`: solo lectura (dashboard, campograma y jugadores).
-   Si el campo `role` no existe, la app lo considera `admin` para mantener
-   compatibilidad con usuarios existentes.
+## Variables de entorno
 
-## 2. Subir el código a GitHub
+Copia `.env.example` a `.env.local` y configura:
 
-```bash
-cd orense-app
-git init
-git add .
-git commit -m "Método Orense de Scouting"
-git branch -M main
-git remote add origin https://github.com/TU-USUARIO/TU-REPO.git
-git push -u origin main
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
 ```
 
-(Si prefieres, crea el repositorio primero en github.com y sigue las
-instrucciones que GitHub te muestra ahí — el resultado es el mismo.)
+En Vercel, define las mismas variables en **Settings → Environment Variables**. La anon key es pública; la autorización efectiva está en middleware y RLS. No configures una service-role key en el navegador.
 
-## 3. Desplegar en Vercel
-
-1. En [vercel.com](https://vercel.com) → **Add New → Project** → elige el
-   repositorio que acabas de subir.
-2. En **Environment Variables**, agrega las dos que copiaste de Supabase:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-3. **Deploy**. En un par de minutos tendrás un enlace público
-   (`algo.vercel.app`). Cada vez que subas cambios a `main` en GitHub,
-   Vercel vuelve a publicar solo.
-
-## 4. Probarla
-
-Abre el enlace de Vercel: lo primero que aparece es la pantalla de inicio
-de sesión. Entra con uno de los correos que creaste en el paso 1.4. Nadie
-puede ver ni un dato sin entrar antes — eso lo hace `middleware.ts`.
-
-## Desarrollo local (opcional)
+## Desarrollo
 
 ```bash
-cp .env.example .env.local   # y pega tu URL y anon key
 npm install
-npm run dev                  # http://localhost:3000
+npm run dev
 ```
 
-## Cómo está organizado el código
+Abre `http://localhost:3000`.
 
-- `lib/formModel.ts` — el motor: niveles N1–N5, secciones, campos y
-  escalas del Método Orense de Scouting. Es la misma definición que ya se
-  usó y probó en la versión de un solo archivo.
-- `lib/reports.ts` — toda la comunicación con Supabase (leer, crear,
-  editar, borrar informes; subir fotos y adjuntos).
-- `middleware.ts` — el candado: sin sesión de Supabase, no se ve nada.
-- `app/login` — pantalla de inicio de sesión.
-- `app/page.tsx` + `components/PlayersList.tsx` — lista de jugadores.
-- `app/reports/new`, `app/reports/[id]/edit` + `components/DynamicForm.tsx`
-  y `components/FieldRenderer.tsx` — el formulario completo.
-- `app/players/[key]` + `components/PlayerDashboardClient.tsx` +
-  `components/RadarChart.tsx` — el tablero de cada jugador.
+## Autorización
 
-## Quién puede editar qué
+El inicio de sesión usa Supabase Auth. Middleware verifica la sesión y el rol de `app_metadata` antes de servir páginas o APIs. Las políticas RLS vuelven a aplicar permisos en la base de datos: todos los usuarios autenticados pueden leer; `admin` y `scout` pueden crear/editar; solo `admin` puede borrar. Storage sigue el mismo criterio de lectura/escritura.
 
-Por defecto, **cualquier observador conectado puede ver y editar todos los
-informes** (política pensada para un equipo pequeño que comparte el
-trabajo). Si prefieres que cada quien solo pueda editar los suyos, cambia
-las políticas `update`/`delete` en `supabase/schema.sql` para exigir
-`created_by = auth.uid()`, y vuelve a ejecutarlas en el SQL Editor.
+La importación por URL acepta exclusivamente enlaces de Google Sheets y requiere sesión administrativa. La consulta de informes de un jugador usa `reports_for_player`; la vista `players_view` resume informes para evitar descargar todo el conjunto al formulario.
 
-## Qué falta (siguiente fase)
+## Estructura
 
-Esta versión cubre el circuito completo (login → crear informe → verlo en
-el tablero de su jugador, con gráficos de araña), pero todavía no tiene:
+- `lib/formModel.ts`: niveles N1–N5, secciones, campos y escalas.
+- `lib/reports.ts`: consultas de informes, jugadores, fotos y adjuntos.
+- `middleware.ts`: refresco de sesión y control de rutas por rol.
+- `supabase/schema.sql`: estructura de datos, índices, funciones, vista y políticas.
+- `app/` y `components/`: páginas y experiencia de scouting.
 
-- **Descarga en PDF** del informe completo y del tablero (en la versión de
-  un solo archivo sí existe, con jsPDF; se puede portar reusando la misma
-  lógica de dibujo).
-- **Vista de "informe completo"** de un jugador (todos sus informes en un
-  solo documento en pantalla, sin repetir los datos base).
-- **Exportar/importar CSV o JSON.**
-- Subida de **adjuntos** en los informes N4 y N5 (el bucket ya existe en
-  Supabase; falta el botón en el formulario).
-- Un buscador de jugadores ya observados **dentro** del campo "Nombre"
-  (autocompletar), como en la versión de un solo archivo.
+## Funcionalidades pendientes
 
-Todo esto reutiliza piezas que ya están en el proyecto (el mismo
-`lib/formModel.ts`, el mismo estilo de PDF), así que se puede agregar por
-partes sin rehacer lo ya construido.
+- Descarga de informes y dashboard en PDF.
+- Vista consolidada de todos los informes de un jugador.
+- Subida de adjuntos N4/N5 desde el formulario.
+- Autocompletado de jugadores en el campo Nombre.

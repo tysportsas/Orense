@@ -9,7 +9,7 @@ export default async function ImportPage() {
     data: { user }
   } = await supabase.auth.getUser();
 
-  const role = normalizeRole(user?.user_metadata?.role);
+  const role = normalizeRole(user?.app_metadata?.role);
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-12">

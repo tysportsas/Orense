@@ -193,7 +193,7 @@ export default function ImportReportsClient() {
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
-            🔗 Pegar enlace de Google Sheets o URL web
+            🔗 Pegar enlace de Google Sheets
           </button>
         </div>
 
@@ -227,7 +227,7 @@ export default function ImportReportsClient() {
         {activeMode === 'url' && (
           <div className="space-y-3">
             <p className="text-sm text-gray-600">
-              Pega la URL de tu **Google Sheets** o un enlace directo a un archivo CSV/JSON público.
+              Pega el enlace de una hoja de Google Sheets accesible para quienes tienen el enlace.
             </p>
             <div className="flex gap-2">
               <input

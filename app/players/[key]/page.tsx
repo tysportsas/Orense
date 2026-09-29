@@ -20,7 +20,7 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
     data: { user }
   } = await supabase.auth.getUser();
 
-  const role = normalizeRole(user?.user_metadata?.role);
+  const role = normalizeRole(user?.app_metadata?.role);
   const playerKey = decodeURIComponent(params.key);
   const reports = await listReportsForPlayer(supabase, playerKey);
   if (!reports.length) notFound();
