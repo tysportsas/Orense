@@ -174,19 +174,30 @@ export interface ObservedPlayerOption {
 }
 
 export async function getObservedPlayersOptions(supabase: SupabaseClient): Promise<ObservedPlayerOption[]> {
-  const { data, error } = await supabase
-    .from('players_view')
-    .select('player_key, nombre, club, categoria, n_informes, latest_data')
-    .order('nombre');
-  if (error) throw error;
-  return (data as (PlayerRow & { latest_data: ReportData })[])
-    .filter((player) => player.nombre && player.latest_data)
-    .map((player) => ({
-      key: player.player_key,
-      nombre: player.nombre,
-      club: player.club ?? undefined,
-      categoria: player.categoria ?? undefined,
-      n_informes: player.n_informes,
-      latestData: player.latest_data
-    }));
+  const reports = await listAllReports(supabase);
+  const players = new Map<string, ObservedPlayerOption>();
+
+  for (const report of reports) {
+    const data = report.data;
+    const nombre = String(data.nombre ?? '').trim();
+    if (!nombre) continue;
+
+    const key = keyOf(data);
+    const existing = players.get(key);
+    if (existing) {
+      existing.n_informes += 1;
+      continue;
+    }
+
+    players.set(key, {
+      key,
+      nombre,
+      club: data.club || undefined,
+      categoria: data.categoria || undefined,
+      n_informes: 1,
+      latestData: data
+    });
+  }
+
+  return [...players.values()].sort((first, second) => first.nombre.localeCompare(second.nombre));
 }
