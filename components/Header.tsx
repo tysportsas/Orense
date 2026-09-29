@@ -3,12 +3,10 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { normalizeRole } from '@/lib/auth';
 
-export default function Header({ email, role = 'admin' }: { email: string; role?: string }) {
+export default function Header({ email }: { email: string; role?: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const userRole = normalizeRole(role ?? 'admin');
 
   async function signOut() {
     const supabase = createClient();
@@ -28,8 +26,13 @@ export default function Header({ email, role = 'admin' }: { email: string; role?
     </Link>
   );
 
-  const canSeeReports = true;
-  const isAdmin = true;
+  const sections = [
+    ['/', 'Jugadores'],
+    ['/dashboard', 'Dashboard'],
+    ['/campograma', 'Campograma'],
+    ['/reports/new', 'Nuevo informe'],
+    ['/reports/import', 'Importar']
+  ];
 
   return (
     <header className="bg-[#0f3a22] text-white">
@@ -42,11 +45,7 @@ export default function Header({ email, role = 'admin' }: { email: string; role?
           </div>
         </div>
         <nav className="flex items-center gap-2">
-          {tab('/', 'Jugadores')}
-          {tab('/dashboard', 'Dashboard')}
-          {tab('/campograma', 'Campograma')}
-          {canSeeReports && tab('/reports/new', 'Nuevo informe')}
-          {isAdmin && tab('/reports/import', 'Importar')}
+          {sections.map(([href, label]) => tab(href, label))}
         </nav>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-white/70 hidden sm:inline">{email || 'Acceso autorizado'}</span>
