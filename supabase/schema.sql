@@ -63,6 +63,7 @@ $$;
 
 revoke all on function public.reports_for_player(text) from public;
 grant execute on function public.reports_for_player(text) to authenticated;
+grant execute on function public.reports_for_player(text) to anon;
 
 -- 3) Los permisos se basan en app_metadata, no editable por el usuario.
 alter table public.reports enable row level security;
@@ -80,6 +81,23 @@ create policy "reports_select_authenticated"
   on public.reports for select
   to authenticated
   using (true);
+
+-- Acceso público para la app sin inicio de sesión. Esto hace visibles los
+-- informes a cualquier visitante; los usuarios anónimos solo pueden insertar.
+drop policy if exists "reports_select_anon" on public.reports;
+drop policy if exists "reports_insert_anon" on public.reports;
+create policy "reports_select_anon"
+  on public.reports for select
+  to anon
+  using (true);
+
+create policy "reports_insert_anon"
+  on public.reports for insert
+  to anon
+  with check (created_by is null);
+
+grant select, insert on public.reports to anon;
+grant select on public.players_view to anon;
 
 create policy "reports_insert_scout_admin"
   on public.reports for insert
