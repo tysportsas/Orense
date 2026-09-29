@@ -28,7 +28,8 @@ export default function Header({ email, role = 'admin' }: { email: string; role?
     </Link>
   );
 
-  const canSeeReports = userRole === 'admin' || userRole === 'scout';
+  const canSeeReports = true;
+  const isAdmin = true;
 
   return (
     <header className="bg-[#0f3a22] text-white">
@@ -45,8 +46,8 @@ export default function Header({ email, role = 'admin' }: { email: string; role?
           {tab('/dashboard', 'Dashboard')}
           {tab('/campograma', 'Campograma')}
           {canSeeReports && tab('/reports/new', 'Nuevo informe')}
-          {userRole === 'admin' && tab('/reports/import', 'Importar')}
-          {userRole === 'admin' && tab('/admin', 'Admin')}
+          {isAdmin && tab('/reports/import', 'Importar')}
+          {isAdmin && tab('/admin', 'Admin')}
         </nav>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-white/70 hidden sm:inline">{email || 'Acceso autorizado'}</span>
