@@ -5,6 +5,7 @@ import { LEVELS, NACIONALIDADES, nivel, ageOf, fmtDate, fmtTs, shortVal, radarAx
 import Header from '@/components/Header';
 import PlayerDashboardClient from '@/components/PlayerDashboardClient';
 import { normalizeRole } from '@/lib/auth';
+import { excelSerialDate } from '@/lib/importExport';
 
 const RADAR_GROUPS = [
   { id: 'tec', title: 'Atributos técnicos', secs: ['p_dep_tec', 'f_tec'] },
@@ -59,7 +60,8 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
       let sum = 0,
         n = 0;
       for (const sec of visibleSections(d)) for (const f of sec.fields(d)) if (f.type === 'rate' && !f.values && typeof d[f.id!] === 'number') { sum += d[f.id!]; n++; }
-      return { id: r.id, lv: lv?.short, partido: d.partido, fpartido: d.fpartido, categoria: d.categoria, club: d.club, observador: d.observador, val_partido: d.val_partido, val_proy: d.val_proy, valoracion: d.valoracion, avg: n ? sum / n : null };
+      const serialDate = excelSerialDate(d.partido);
+      return { id: r.id, lv: lv?.short, partido: serialDate ? 'Partido registrado' : d.partido, fpartido: d.fpartido || serialDate, categoria: d.categoria, club: d.club, observador: d.observador, val_partido: d.val_partido, val_proy: d.val_proy, valoracion: d.valoracion, avg: n ? sum / n : null };
     });
 
   return (
@@ -90,7 +92,12 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
           val_partido: c.val_partido ? shortVal(c.val_partido) : '',
           val_proy: c.val_proy ? shortVal(c.val_proy) : ''
         }))}
-        groups={groups.map((g) => ({ id: g.id, title: g.title, series: g.series.map((s) => ({ id: s.report.id, label: `${s.report.data.fpartido ? fmtDate(s.report.data.fpartido) : 'Sin fecha'}, ${s.report.data.partido || ''}`, axes: s.axes, nivel: LEVELS[nivel(s.report.data) - 1]?.short })) }))}
+        groups={groups.map((g) => ({ id: g.id, title: g.title, series: g.series.map((s) => {
+          const serialDate = excelSerialDate(s.report.data.partido);
+          const date = s.report.data.fpartido || serialDate;
+          const match = serialDate ? 'Partido registrado' : s.report.data.partido || '';
+          return { id: s.report.id, label: `${date ? fmtDate(date) : 'Sin fecha'}, ${match}`, axes: s.axes, nivel: LEVELS[nivel(s.report.data) - 1]?.short };
+        }) }))}
       />
     </div>
   );

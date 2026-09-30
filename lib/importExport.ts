@@ -13,6 +13,35 @@ export interface ParsedImportRow {
   error?: string;
 }
 
+export function excelSerialDate(value: unknown): string | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  const raw = String(value ?? '').trim();
+  if (!/^\d+(?:\.\d+)?$/.test(raw)) return null;
+
+  const serial = Number(raw);
+  if (!Number.isFinite(serial) || serial < 20000 || serial > 80000) return null;
+
+  return new Date(Date.UTC(1899, 11, 30) + Math.floor(serial) * 86400000).toISOString().slice(0, 10);
+}
+
+function setImportedValue(rowData: ReportData, key: string, value: unknown) {
+  const text = String(value ?? '').trim();
+  if (!text || !key) return;
+
+  if (key === 'partido') {
+    const date = excelSerialDate(value);
+    if (date) {
+      rowData.fpartido = rowData.fpartido || date;
+      return;
+    }
+  }
+
+  rowData[key] = key === 'fnac' || key === 'fpartido' ? excelSerialDate(value) ?? text : text;
+}
+
 /** Mapeador de columnas comunes de CSV/Excel a las claves internas del Método Orense */
 const HEADER_MAP: Record<string, string> = {
   nombre: 'nombre',
@@ -170,9 +199,7 @@ export function parseCSV(text: string): ParsedImportRow[] {
 
     const rowData: ReportData = {};
     mappedHeaders.forEach((key, idx) => {
-      if (values[idx] !== undefined && values[idx] !== '' && key) {
-        rowData[key] = values[idx];
-      }
+      if (values[idx] !== undefined) setImportedValue(rowData, key, values[idx]);
     });
 
     // Default para observador si no vino especificado
@@ -225,7 +252,7 @@ function splitCSVLine(line: string, delimiter: string): string[] {
 /** Procesa el contenido de un archivo de Excel (.xlsx, .xls) a partir de su ArrayBuffer */
 export function parseExcel(arrayBuffer: ArrayBuffer): ParsedImportRow[] {
   try {
-    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
     const firstSheetName = workbook.SheetNames[0];
     if (!firstSheetName) return [];
     const worksheet = workbook.Sheets[firstSheetName];
@@ -235,10 +262,7 @@ export function parseExcel(arrayBuffer: ArrayBuffer): ParsedImportRow[] {
       const rowData: ReportData = {};
       Object.keys(row).forEach((rawKey) => {
         const targetKey = mapHeaderToFieldKey(rawKey);
-        const val = String(row[rawKey]).trim();
-        if (val !== '' && targetKey) {
-          rowData[targetKey] = val;
-        }
+        setImportedValue(rowData, targetKey, row[rawKey]);
       });
 
       // Default para observador si no vino especificado
