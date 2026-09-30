@@ -70,9 +70,8 @@ export async function listLatestReportsForPlayers(supabase: SupabaseClient): Pro
 }
 
 export async function listReportsForPlayer(supabase: SupabaseClient, playerKey: string): Promise<ReportRow[]> {
-  const { data, error } = await supabase.rpc('reports_for_player', { p_player_key: playerKey });
-  if (error) throw error;
-  return data as ReportRow[];
+  const reports = await listAllReports(supabase);
+  return reports.filter((report) => keyOf(report.data) === playerKey);
 }
 
 export async function getReport(supabase: SupabaseClient, id: string): Promise<ReportRow | null> {
