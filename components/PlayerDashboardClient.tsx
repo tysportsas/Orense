@@ -14,6 +14,8 @@ interface MatchCard {
   categoria?: string;
   club?: string;
   observador?: string;
+  link1?: string;
+  link2?: string;
   val_partido: string;
   val_proy: string;
   valoracion?: string;
@@ -36,6 +38,27 @@ function Badge({ v }: { v?: string }) {
 function matchTitle(value?: string) {
   const title = String(value ?? '').trim();
   return !title || /^\d+(?:[.,]\d+)?$/.test(title) ? 'Sin partido' : title;
+}
+
+function validExternalUrl(value?: string) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function externalLinkLabel(value: string, fallback: string) {
+  try {
+    const host = new URL(value).hostname.replace(/^www\./, '').toLowerCase();
+    if (host.includes('transfermarkt')) return 'Transfermarkt';
+    if (host.includes('besoccer')) return 'BeSoccer';
+    return host || fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 export default function PlayerDashboardClient({
@@ -141,6 +164,22 @@ export default function PlayerDashboardClient({
                   <small className="block text-muted text-xs">Atributos</small>
                   <b>{c.avg != null ? `${c.avg.toFixed(1)} de 5` : 'Sin dato'}</b>
                 </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <span className="text-xs text-muted">Enlaces</span>
+                {validExternalUrl(c.link1) && (
+                  <a href={validExternalUrl(c.link1)!} target="_blank" rel="noopener noreferrer" className="font-semibold text-turf underline">
+                    {externalLinkLabel(c.link1!, 'Enlace 1')}
+                  </a>
+                )}
+                {validExternalUrl(c.link2) && (
+                  <a href={validExternalUrl(c.link2)!} target="_blank" rel="noopener noreferrer" className="font-semibold text-turf underline">
+                    {externalLinkLabel(c.link2!, 'Enlace 2')}
+                  </a>
+                )}
+                {!validExternalUrl(c.link1) && !validExternalUrl(c.link2) && (
+                  <span className="text-xs text-muted">Sin enlaces registrados</span>
+                )}
               </div>
               <Link href={`/reports/${c.id}/edit`} className="text-sm font-semibold text-turf mt-1">
                 Ver informe

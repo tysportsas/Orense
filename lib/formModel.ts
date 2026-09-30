@@ -48,7 +48,7 @@ export type ReportData = Record<string, any>;
 const LEGACY_FIELD_ALIASES: Array<[RegExp, string]> = [
   [/^rol_de_jugador$/, 'rol'],
   [/^tipo_de_visualizacion$/, 'visualizacion'],
-  [/^agente_2$/, 'agente'],
+  [/^agente(?:_\d+)?$/, 'agente'],
   [/^link_?2__tm__besoccer/, 'link2'],
   [/^link__tm__besoccer/, 'link1'],
   [/^control_orientado(?:_|$)/, 'tec_control_orientado'],
@@ -68,7 +68,17 @@ const LEGACY_FIELD_ALIASES: Array<[RegExp, string]> = [
   [/^comportamiento_abp_def(?:_|$)/, 'tac_abp_def'],
   [/^busqueda_visual(?:_|$)/, 'tac_busq_vis'],
   [/^observacion_16$/, 'tac_obs'],
-  [/^observacion_17$/, 'tec_obs']
+  [/^observacion_17$/, 'tec_obs'],
+  [/^carisma(?:_|$)/, 'psi_carisma'],
+  [/^liderazgo(?:_|$)/, 'psi_liderazgo'],
+  [/^compromiso(?:_|$)/, 'psi_compromiso'],
+  [/^resiliencia(?:_|$)/, 'psi_resiliencia'],
+  [/^impulsividad(?:_|$)/, 'psi_impulsividad'],
+  [/^concentracion(?:_|$)/, 'psi_concentracion'],
+  [/^autodisciplina(?:_|$)/, 'psi_autodisciplina'],
+  [/^adaptacion(?:_|$)/, 'rend_ada'],
+  [/^tendencia_a_lesion(?:_|$)/, 'rend_les'],
+  [/^rendimiento_ultima_temporada(?:_|$)/, 'rend_ult']
 ];
 
 export function canonicalReportFieldKey(sourceKey: string): string {
@@ -138,6 +148,10 @@ export function normalizeReportData(data: ReportData): ReportData {
     for (const key of ['control', 'pase', 'remate', 'conducciones', 'juego_aereo', 'pierna_habil', 'pierna_no_habil']) {
       const value = normalized[`tec_${key}`];
       if (normalized[`tecf_${key}`] == null && value != null) normalized[`tecf_${key}`] = value;
+    }
+    for (const key of ['liderazgo', 'concentracion', 'resiliencia']) {
+      const value = normalized[`psi_${key}`];
+      if (normalized[`menf_${key}`] == null && value != null) normalized[`menf_${key}`] = value;
     }
   }
 
@@ -310,7 +324,10 @@ export const pyramid = (id, label, o: Partial<Field> = {}): Field => ({type: 'py
 export const photo = (id, label, o: Partial<Field> = {}): Field => ({type: 'photo', id, label, ...o});
 
 export const isF = d => FORM_CATS.includes(String(d?.categoria ?? '').trim().toUpperCase());
-export const isP = d => PRO_CATS.includes(String(d?.categoria ?? '').trim().toUpperCase());
+export const isP = (d: ReportData) => {
+  if (PRO_CATS.includes(String(d?.categoria ?? '').trim().toUpperCase())) return true;
+  return nivel(d) === 3 && Object.keys(d ?? {}).some((key) => /^(psi_|rend_)/.test(canonicalReportFieldKey(key)));
+};
 export const nivel = (d: ReportData): number => {
   const value = String(d?.tipo_informe ?? '')
     .normalize('NFD')
@@ -408,6 +425,8 @@ export const SECTIONS = [
       txt('partido', 'Partido visto', {req: true, short: 'Partido visto', tx: tUpper, autocap: 'characters',
         hint: 'Únicamente el nombre corto, en mayúsculas. Ej.: ORENSE VS IDV, LIGA QUITO VS LIBERTAD, TOLIMA VS NACIONAL.'}),
       date('fpartido', 'Fecha del partido visto', {req: true, short: 'Fecha del partido', validate: v => v > todayISO() ? 'La fecha no puede ser futura.' : null}),
+      txt('link1', 'Link (TM, BeSoccer o algún link relevante)', {short: 'Link 1', link: true}),
+      txt('link2', 'Link adicional relevante', {short: 'Link 2', link: true}),
       chips('visualizacion', 'Tipo de visualización', ['VIVO', 'VIDEO'], {req: true, short: 'Tipo de visualización'}),
       chips('rol', 'Rol del jugador', ['TITULAR', 'ALTERNATIVA'], {req: true, short: 'Rol del jugador'}),
       chips('categoria', 'Categoría vista', CATEGORIAS, {req: true, ctrl: true, short: 'Categoría vista'})
@@ -424,9 +443,7 @@ export const SECTIONS = [
         hint: 'Escribe para buscar el cantón; se muestra con su provincia. Si nació fuera del país, elige EXTRANJERO.',
         validate: v => LUGARES.some(x => norm(x) === norm(v)) ? null : 'Elige una opción de la lista.'}),
       sel('tipo_informe', 'Tipo de informe', TIPOS.slice(0, 3), {req: true, short: 'Tipo de informe'}),
-      ...valFields(),
-      txt('link1', 'Link (Comet, YouTube, Instagram u otro relevante)', {short: 'Link 1', link: true}),
-      txt('link2', 'Link 2 (YouTube, Instagram u otro relevante)', {short: 'Link 2', link: true})
+      ...valFields()
     ]
   },
   {
@@ -439,7 +456,7 @@ export const SECTIONS = [
     when: isF, fields: () => tecFields('tecf_', TEC_F)
   },
   {
-    id: 'f_tac', title: 'Atributos tácticos', desc: SCALE_NOTE + ' ' + FIRST_NOTE,
+    id: 'f_tac', radar: true, title: 'Atributos tácticos', desc: SCALE_NOTE + ' ' + FIRST_NOTE,
     when: isF, fields: () => tacFields()
   },
   {
@@ -452,7 +469,7 @@ export const SECTIONS = [
     ]
   },
   {
-    id: 'f_men', title: 'Atributos mentales', desc: SCALE_NOTE + ' ' + FIRST_NOTE,
+    id: 'f_men', radar: true, title: 'Atributos mentales', desc: SCALE_NOTE + ' ' + FIRST_NOTE,
     when: isF,
     fields: () => [
       ...[['liderazgo', 'Liderazgo'], ['concentracion', 'Concentración'], ['trabajo_equipo', 'Trabajo en equipo'], ['resiliencia', 'Resiliencia']]
@@ -475,9 +492,7 @@ export const SECTIONS = [
     when: d => isP(d) && nivel(d) === 1,
     fields: () => [
       ...valFields(),
-      txt('agente', 'Agente', {short: 'Agente'}),
-      txt('link1', 'Link (TM, BeSoccer u otro relevante)', {short: 'Link 1', link: true}),
-      txt('link2', 'Link 2 (TM, BeSoccer u otro relevante)', {short: 'Link 2', link: true})
+      txt('agente', 'Agente', {short: 'Agente'})
     ]
   },
   {

@@ -11,7 +11,8 @@ const RADAR_GROUPS = [
   { id: 'tac', title: 'Atributos tácticos', secs: ['p_dep_tac', 'f_tac'] },
   { id: 'pos', title: 'Atributos del puesto específico', secs: ['p_dep_pos'] },
   { id: 'fis', title: 'Atributos físicos y condicionales', secs: ['p_esp_fis', 'f_fis'] },
-  { id: 'rend', title: 'Atributos de rendimiento', secs: ['p_esp_rend'] }
+  { id: 'rend', title: 'Atributos de rendimiento', secs: ['p_esp_rend'] },
+  { id: 'mental', title: 'Atributos psicológicos y mentales', secs: ['p_esp_psi', 'f_men'] }
 ];
 
 export default async function PlayerDashboardPage({ params }: { params: { key: string } }) {
@@ -60,7 +61,7 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
         n = 0;
       for (const sec of visibleSections(d)) for (const f of sec.fields(d)) if (f.type === 'rate' && !f.values && typeof d[f.id!] === 'number') { sum += d[f.id!]; n++; }
       const serialDate = excelSerialDate(d.partido);
-      return { id: r.id, lv: lv?.short, partido: serialDate ? 'Partido registrado' : d.partido, fpartido: d.fpartido || serialDate, categoria: d.categoria, club: d.club, observador: d.observador, val_partido: d.val_partido, val_proy: d.val_proy, valoracion: d.valoracion, avg: n ? sum / n : null };
+      return { id: r.id, lv: lv?.short, partido: serialDate ? 'Partido registrado' : d.partido, fpartido: d.fpartido || serialDate, categoria: d.categoria, club: d.club, observador: d.observador, link1: d.link1, link2: d.link2, val_partido: d.val_partido, val_proy: d.val_proy, valoracion: d.valoracion, avg: n ? sum / n : null };
     });
 
   return (
