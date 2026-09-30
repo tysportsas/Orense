@@ -33,6 +33,11 @@ function Badge({ v }: { v?: string }) {
   return <span className={`badge v${n}`}>{label.charAt(0) + label.slice(1).toLowerCase()}</span>;
 }
 
+function matchTitle(value?: string) {
+  const title = String(value ?? '').trim();
+  return !title || /^\d+(?:[.,]\d+)?$/.test(title) ? 'Sin partido' : title;
+}
+
 export default function PlayerDashboardClient({
   nombre,
   foto,
@@ -118,7 +123,7 @@ export default function PlayerDashboardClient({
                   <div className="text-xs text-muted">
                     {c.fpartidoLabel}, {c.lv || 'Sin nivel'}
                   </div>
-                  <h3 className="font-display font-bold text-xl">{c.partido || 'Sin partido'}</h3>
+                  <h3 className="font-display font-bold text-xl">{matchTitle(c.partido)}</h3>
                 </div>
                 <Badge v={c.valoracion} />
               </div>
