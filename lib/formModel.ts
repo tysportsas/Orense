@@ -243,8 +243,11 @@ export const valFields = () => [
 ];
 
 export const caracFields = (d, carrilero) => {
-  const p = d.puesto; if (!p) return [];
-  const list = CARAC[p].slice();
+  const p = String(d.puesto ?? '').trim().toUpperCase();
+  if (!p) return [];
+  const characteristics = CARAC[p];
+  if (!characteristics) return [note('Puesto no reconocido', `El valor importado "${p}" no coincide con una posición del catálogo.`)];
+  const list = characteristics.slice();
   if (p === 'LATERAL' && carrilero) list.push(CARRILERO);
   const options = [...list.map(([t, ds]) => ({v: t, t, d: ds})), {v: 'SIN VER', t: 'SIN VER', d: ''}];
   return [
@@ -255,10 +258,13 @@ export const caracFields = (d, carrilero) => {
 };
 
 export const attFields = d => {
-  const p = d.puesto; if (!p) return [];
+  const p = String(d.puesto ?? '').trim().toUpperCase();
+  if (!p) return [];
+  const attributes = ATT[p];
+  if (!attributes) return [note('Puesto no reconocido', `El valor importado "${p}" no coincide con una posición del catálogo.`)];
   return [
     note('Atributos de ' + cap(p), SCALE_NOTE),
-    ...ATT[p].map(l => rate('att_' + p + '_' + slug(l), l, SC_POS, {short: cap(p) + ' · ' + l})),
+    ...attributes.map(l => rate('att_' + p + '_' + slug(l), l, SC_POS, {short: cap(p) + ' · ' + l})),
     area('att_obs_' + p, 'Observación', {short: 'Atributos ' + cap(p) + ' · Observación'})
   ];
 };
