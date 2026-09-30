@@ -4,27 +4,13 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
-import type { ReportData } from './formModel';
+import { canonicalReportFieldKey, excelSerialDate, normalizeReportData, type ReportData } from './formModel';
 import { createReport } from './reports';
 
 export interface ParsedImportRow {
   data: ReportData;
   isValid: boolean;
   error?: string;
-}
-
-export function excelSerialDate(value: unknown): string | null {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value.toISOString().slice(0, 10);
-  }
-
-  const raw = String(value ?? '').trim();
-  if (!/^\d+(?:\.\d+)?$/.test(raw)) return null;
-
-  const serial = Number(raw);
-  if (!Number.isFinite(serial) || serial < 20000 || serial > 80000) return null;
-
-  return new Date(Date.UTC(1899, 11, 30) + Math.floor(serial) * 86400000).toISOString().slice(0, 10);
 }
 
 function setImportedValue(rowData: ReportData, key: string, value: unknown) {
@@ -95,6 +81,9 @@ export function mapHeaderToFieldKey(rawHeader: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .trim()
     .replace(/[^a-z0-9_]/g, '_');
+
+  const legacyField = canonicalReportFieldKey(clean);
+  if (legacyField !== clean) return legacyField;
 
   // Si existe coincidencia exacta
   if (HEADER_MAP[clean]) return HEADER_MAP[clean];
@@ -305,7 +294,7 @@ export function parseJSON(text: string): ParsedImportRow[] {
       Object.keys(item).forEach((rawKey) => {
         const targetKey = mapHeaderToFieldKey(rawKey);
         if (item[rawKey] !== undefined && item[rawKey] !== null && targetKey) {
-          data[targetKey] = item[rawKey];
+                data[targetKey] = item[rawKey];
         }
       });
 
@@ -347,14 +336,14 @@ export async function bulkInsertReports(
     const batch = items.slice(start, start + batchSize);
     const { error } = await supabase
       .from('reports')
-      .insert(batch.map((data) => ({ data, created_by: null })));
+      .insert(batch.map((data) => ({ data: normalizeReportData(data), created_by: null })));
 
     if (!error) {
       success += batch.length;
     } else {
       for (const item of batch) {
         try {
-          await createReport(supabase, item);
+          await createReport(supabase, normalizeReportData(item));
           success++;
         } catch (itemError: any) {
           failed++;

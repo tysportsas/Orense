@@ -45,6 +45,88 @@ export interface Section {
 
 export type ReportData = Record<string, any>;
 
+const LEGACY_FIELD_ALIASES: Array<[RegExp, string]> = [
+  [/^rol_de_jugador$/, 'rol'],
+  [/^tipo_de_visualizacion$/, 'visualizacion'],
+  [/^agente_2$/, 'agente'],
+  [/^link_?2__tm__besoccer/, 'link2'],
+  [/^link__tm__besoccer/, 'link1'],
+  [/^control_orientado(?:_|$)/, 'tec_control_orientado'],
+  [/^control(?:_|$)/, 'tec_control'],
+  [/^ejecucion(?:_|$)/, 'tec_ejecucion'],
+  [/^pase_corto(?:_|$)/, 'tec_pase_corto'],
+  [/^pase_largo(?:_|$)/, 'tec_pase_largo'],
+  [/^remate(?:_|$)/, 'tec_remate'],
+  [/^conducciones(?:_|$)/, 'tec_conducciones'],
+  [/^juego_aereo(?:_|$)/, 'tec_juego_aereo'],
+  [/^registros_pierna_habil(?:_|$)/, 'tec_pierna_habil'],
+  [/^registros_pierna_no_+habil(?:_|$)/, 'tec_pierna_no_habil'],
+  [/^decisiones_con_balon(?:_|$)/, 'tac_dec_con'],
+  [/^decisiones_sin_balon(?:_|$)/, 'tac_dec_sin'],
+  [/^comportamiento_abp_of(?:_|$)/, 'tac_abp_of'],
+  [/^comportamiento_abp_def(?:_|$)/, 'tac_abp_def'],
+  [/^busqueda_visual(?:_|$)/, 'tac_busq_vis'],
+  [/^observacion_16$/, 'tac_obs'],
+  [/^observacion_17$/, 'tec_obs']
+];
+
+export function canonicalReportFieldKey(sourceKey: string): string {
+  const key = String(sourceKey ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/[^a-z0-9_]/g, '_');
+
+  return LEGACY_FIELD_ALIASES.find(([pattern]) => pattern.test(key))?.[1] ?? key;
+}
+
+function normalizeReportValue(fieldKey: string, value: any) {
+  if (/^(?:att_|tac_|tec_|tecf_|fisf_|menf_|psi_|fis_|rend_|ins_)/.test(fieldKey) && typeof value === 'string') {
+    const trimmed = value.trim();
+    if (/^[1-5]$/.test(trimmed)) return Number(trimmed);
+  }
+  return value;
+}
+
+export function excelSerialDate(value: unknown): string | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  const raw = String(value ?? '').trim();
+  if (!/^\d+(?:\.\d+)?$/.test(raw)) return null;
+
+  const serial = Number(raw);
+  if (!Number.isFinite(serial) || serial < 20000 || serial > 80000) return null;
+
+  return new Date(Date.UTC(1899, 11, 30) + Math.floor(serial) * 86400000).toISOString().slice(0, 10);
+}
+
+export function normalizeReportData(data: ReportData): ReportData {
+  const normalized = { ...data };
+  for (const [sourceKey, value] of Object.entries(data)) {
+    const fieldKey = canonicalReportFieldKey(sourceKey);
+    if (fieldKey === sourceKey) {
+      normalized[fieldKey] = normalizeReportValue(fieldKey, value);
+      continue;
+    }
+
+    if (normalized[fieldKey] == null || normalized[fieldKey] === '') {
+      normalized[fieldKey] = normalizeReportValue(fieldKey, value);
+    }
+  }
+
+  for (const fieldKey of ['fnac', 'fpartido']) {
+    normalized[fieldKey] = excelSerialDate(normalized[fieldKey]) ?? normalized[fieldKey];
+  }
+  if (!normalized.fpartido) {
+    normalized.fpartido = excelSerialDate(normalized.partido) ?? normalized.fpartido;
+  }
+
+  return normalized;
+}
+
 export const OBSERVADORES = ['DANIEL ARANGO','JAVIER SEMELER','LUIS TOAPANTA','PABLO TOBON','EDSON MENDOZA','GUSTAVO PAREDES','MAURICIO MANCUELLO','ROMARIO TAPIA','ALEJANDRO TELLO','CT S11','CT S13','CT S15','CT S17','CT S19','CT CANTERA','CT ACADEMIAS'];
 
 export const NAC_LABEL = {COSTARICA:'COSTA RICA',ELSALVADOR:'EL SALVADOR',ESTADOSUNIDOS:'ESTADOS UNIDOS',COSTADEMARFIL:'COSTA DE MARFIL',COREADELSUR:'COREA DEL SUR',OTRANACIONALIDAD:'OTRA NACIONALIDAD'};

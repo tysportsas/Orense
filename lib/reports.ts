@@ -6,7 +6,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ReportData } from './formModel';
-import { norm } from './formModel';
+import { normalizeReportData, norm } from './formModel';
 
 export interface ReportRow {
   id: string;
@@ -42,7 +42,10 @@ export async function listAllReports(supabase: SupabaseClient): Promise<ReportRo
       .order('created_at', { ascending: false })
       .range(start, start + pageSize - 1);
     if (error) throw error;
-    rows.push(...(data as ReportRow[]));
+    rows.push(...(data as ReportRow[]).map((report) => ({
+      ...report,
+      data: normalizeReportData(report.data)
+    })));
     if (data.length < pageSize) return rows;
   }
 }
@@ -71,13 +74,17 @@ export async function listLatestReportsForPlayers(supabase: SupabaseClient): Pro
 
 export async function listReportsForPlayer(supabase: SupabaseClient, playerKey: string): Promise<ReportRow[]> {
   const reports = await listAllReports(supabase);
-  return reports.filter((report) => keyOf(report.data) === playerKey);
+  const separator = playerKey.lastIndexOf('|');
+  const requestedKey = separator < 0
+    ? playerKey
+    : `${norm(playerKey.slice(0, separator))}|${normalizeReportData({ fnac: playerKey.slice(separator + 1) }).fnac || ''}`;
+  return reports.filter((report) => keyOf(report.data) === requestedKey);
 }
 
 export async function getReport(supabase: SupabaseClient, id: string): Promise<ReportRow | null> {
   const { data, error } = await supabase.from('reports').select('*').eq('id', id).maybeSingle();
   if (error) throw error;
-  return data as ReportRow | null;
+  return data ? { ...data, data: normalizeReportData(data.data) } as ReportRow : null;
 }
 
 export async function createReport(supabase: SupabaseClient, data: ReportData): Promise<ReportRow> {

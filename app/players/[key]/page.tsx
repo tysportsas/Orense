@@ -1,11 +1,10 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { listReportsForPlayer } from '@/lib/reports';
-import { LEVELS, NACIONALIDADES, nivel, ageOf, fmtDate, fmtTs, shortVal, radarAxes, visibleSections } from '@/lib/formModel';
+import { LEVELS, NACIONALIDADES, nivel, ageOf, fmtDate, fmtTs, shortVal, radarAxes, visibleSections, excelSerialDate } from '@/lib/formModel';
 import Header from '@/components/Header';
 import PlayerDashboardClient from '@/components/PlayerDashboardClient';
 import { normalizeRole } from '@/lib/auth';
-import { excelSerialDate } from '@/lib/importExport';
 
 const RADAR_GROUPS = [
   { id: 'tec', title: 'Atributos técnicos', secs: ['p_dep_tec', 'f_tec'] },
