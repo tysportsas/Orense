@@ -213,9 +213,24 @@ export const photo = (id, label, o: Partial<Field> = {}): Field => ({type: 'phot
 export const isF = d => FORM_CATS.includes(String(d?.categoria ?? '').trim().toUpperCase());
 export const isP = d => PRO_CATS.includes(String(d?.categoria ?? '').trim().toUpperCase());
 export const nivel = (d: ReportData): number => {
-  const value = d?.tipo_informe;
-  const index = typeof value === 'string' ? TIPOS.indexOf(value) : -1;
-  return index >= 0 ? index + 1 : 0;
+  const value = String(d?.tipo_informe ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+  if (!value) return 0;
+
+  const index = TIPOS.findIndex((type) => type.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() === value);
+  if (index >= 0) return index + 1;
+
+  const number = value.match(/\bn\s*([1-5])\b/) || value.match(/\bnivel\s*([1-5])\b/) || value.match(/^\s*([1-5])\s*[.\-:]/);
+  if (number) return Number(number[1]);
+  if (value.includes('general')) return 1;
+  if (value.includes('deportivo')) return 2;
+  if (value.includes('especifico')) return 3;
+  if (value.includes('institucional')) return 5;
+  if (value.includes('final')) return 4;
+  return 0;
 };
 
 export const SCALE_NOTE = 'Asigne la valoración que mejor represente el nivel observado del jugador en cada criterio, de acuerdo con la escala establecida y con base en la evidencia obtenida durante la observación.';

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { ReportRow } from '@/lib/reports';
 import { keyOf, deleteReport } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
-import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES } from '@/lib/formModel';
+import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, nivel } from '@/lib/formModel';
 
 interface Props {
   initialReports: ReportRow[];
@@ -62,13 +62,8 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
   const levelDistribution = useMemo(() => {
     const dist: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     reports.forEach(r => {
-      const tipo = r.data.tipo_informe || '';
-      if (tipo.includes('N1') || tipo.includes('general')) dist[1]++;
-      else if (tipo.includes('N2') || tipo.includes('deportivo')) dist[2]++;
-      else if (tipo.includes('N3') || tipo.includes('específico') || tipo.includes('especifico')) dist[3]++;
-      else if (tipo.includes('N4') || tipo.includes('final')) dist[4]++;
-      else if (tipo.includes('N5') || tipo.includes('institucional')) dist[5]++;
-      else dist[1]++; // default
+      const level = nivel(r.data);
+      if (level) dist[level]++;
     });
     return dist;
   }, [reports]);
@@ -110,10 +105,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
       }
       if (selectedObservador && d.observador !== selectedObservador) return false;
       if (selectedCategoria && d.categoria !== selectedCategoria) return false;
-      if (selectedNivel) {
-        const tipo = d.tipo_informe || '';
-        if (!tipo.toLowerCase().includes(selectedNivel.toLowerCase())) return false;
-      }
+      if (selectedNivel && nivel(d) !== Number(selectedNivel.slice(1))) return false;
       if (selectedValoracion && (!d.valoracion || !d.valoracion.includes(selectedValoracion))) return false;
 
       return true;
