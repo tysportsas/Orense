@@ -318,21 +318,12 @@ export async function bulkInsertReports(
   let failed = 0;
   const errors: string[] = [];
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return {
-      success: 0,
-      failed: items.length,
-      errors: ['La sesión expiró o no tiene permiso para importar.']
-    }
-  }
-
   const batchSize = 100;
   for (let start = 0; start < items.length; start += batchSize) {
     const batch = items.slice(start, start + batchSize);
     const { error } = await supabase
       .from('reports')
-      .insert(batch.map((data) => ({ data, created_by: user.id })));
+      .insert(batch.map((data) => ({ data, created_by: null })));
 
     if (!error) {
       success += batch.length;

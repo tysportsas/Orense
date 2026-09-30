@@ -65,7 +65,9 @@ revoke all on function public.reports_for_player(text) from public;
 grant execute on function public.reports_for_player(text) to authenticated;
 grant execute on function public.reports_for_player(text) to anon;
 
--- 3) Los permisos se basan en app_metadata, no editable por el usuario.
+-- 3) Acceso público de lectura e inserción para la app sin login.
+--    Los envíos anónimos quedan con created_by = null. La edición y el borrado
+--    continúan reservados a cuentas autenticadas con el rol correspondiente.
 alter table public.reports enable row level security;
 
 drop policy if exists "Observadores autenticados pueden leer todo" on public.reports;
@@ -86,18 +88,19 @@ create policy "reports_select_authenticated"
 -- informes a cualquier visitante; los usuarios anónimos solo pueden insertar.
 drop policy if exists "reports_select_anon" on public.reports;
 drop policy if exists "reports_insert_anon" on public.reports;
+drop policy if exists "reports_insert_public" on public.reports;
 create policy "reports_select_anon"
   on public.reports for select
   to anon
   using (true);
 
-create policy "reports_insert_anon"
+create policy "reports_insert_public"
   on public.reports for insert
-  to anon
+  to public
   with check (created_by is null);
 
-grant select, insert on public.reports to anon;
-grant select on public.players_view to anon;
+grant select, insert on public.reports to anon, authenticated;
+grant select on public.players_view to anon, authenticated;
 
 create policy "reports_insert_scout_admin"
   on public.reports for insert
@@ -157,16 +160,8 @@ create policy "storage_delete_admin"
     and coalesce(auth.jwt()->'app_metadata'->>'role', 'viewer') = 'admin'
   );
 
--- 5) Cuentas de los observadores: Supabase Auth no permite crear usuarios
---    por SQL con contraseña en texto plano de forma soportada. Créalos
---    desde el panel: Authentication → Users → Add user, uno por cada
---    observador (Daniel Arango, Javier Semeler...), con su correo y una
---    contraseña provisional que cada quien cambiará en su primer ingreso.
---    En App Metadata asigna `role` (no User Metadata, editable por el usuario):
---      - admin: acceso completo.
---      - scout: consulta, crea y edita informes; ve dashboard/campograma.
---      - viewer: solo lectura.
---    Si no se define, la app aplica viewer. Asigna el primer admin desde
---    el panel de Supabase antes de iniciar sesión.
---    No hay registro público: la app solo tiene pantalla de inicio de
---    sesión, nunca de "crear cuenta".
+-- 5) El acceso público no necesita cuentas de Supabase. Para volver a un modo
+--    con usuarios, crea sus cuentas desde Authentication → Users y asigna en
+--    App Metadata el rol admin, scout o viewer. Las políticas autenticadas de
+--    edición y borrado de arriba siguen usando esos roles.
+--    Las políticas de Storage continúan limitadas a usuarios autenticados.

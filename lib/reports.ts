@@ -82,17 +82,9 @@ export async function getReport(supabase: SupabaseClient, id: string): Promise<R
 }
 
 export async function createReport(supabase: SupabaseClient, data: ReportData): Promise<ReportRow> {
-  let userId: string | null = null;
-  try {
-    const { data: authData } = await supabase.auth.getUser();
-    userId = authData.user?.id ?? null;
-  } catch {
-    userId = null;
-  }
-
   const { data: row, error } = await supabase
     .from('reports')
-    .insert({ data, created_by: userId })
+    .insert({ data, created_by: null })
     .select()
     .single();
   if (error) throw error;
