@@ -69,6 +69,9 @@ const LEGACY_FIELD_ALIASES: Array<[RegExp, string]> = [
   [/^busqueda_visual(?:_|$)/, 'tac_busq_vis'],
   [/^observacion_16$/, 'tac_obs'],
   [/^observacion_17$/, 'tec_obs'],
+  [/^observacion_18$/, 'psi_obs'],
+  [/^observacion_19$/, 'rend_obs'],
+  [/^observacion_39$/, 'fis_obs'],
   [/^carisma(?:_|$)/, 'psi_carisma'],
   [/^liderazgo(?:_|$)/, 'psi_liderazgo'],
   [/^compromiso(?:_|$)/, 'psi_compromiso'],
@@ -142,6 +145,17 @@ export function normalizeReportData(data: ReportData): ReportData {
   }
   if (!normalized.fpartido) {
     normalized.fpartido = excelSerialDate(normalized.partido) ?? normalized.fpartido;
+  }
+  if (excelSerialDate(normalized.partido)) {
+    // El nombre del partido quedó con un serial de Excel; ya se usó arriba para fpartido.
+    delete normalized.partido;
+  }
+
+  if (typeof normalized.agente === 'string' && /^https?:\/\//i.test(normalized.agente.trim())) {
+    const misplacedLink = normalized.agente.trim();
+    delete normalized.agente;
+    if (!normalized.link1) normalized.link1 = misplacedLink;
+    else if (!normalized.link2) normalized.link2 = misplacedLink;
   }
 
   if (FORM_CATS.includes(String(normalized.categoria ?? '').trim().toUpperCase()) && nivel(normalized) === 1) {

@@ -356,7 +356,8 @@ export default function FieldRenderer({
       );
     }
 
-    case 'pitch':
+    case 'pitch': {
+      const isUnrecognized = value && !POS.includes(value);
       return (
         <div>
           {label}
@@ -377,9 +378,15 @@ export default function FieldRenderer({
               );
             })}
           </div>
+          {isUnrecognized && (
+            <p className="text-sm text-amber-700 mt-1">
+              El valor importado &quot;{value}&quot; no coincide con ninguna posición del catálogo. Selecciona la posición correcta.
+            </p>
+          )}
           {err}
         </div>
       );
+    }
 
     case 'pyramid': {
       const options = LEVELS.map((level) => ({
