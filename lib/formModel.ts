@@ -56,6 +56,7 @@ const LEGACY_FIELD_ALIASES: Array<[RegExp, string]> = [
   [/^ejecucion(?:_|$)/, 'tec_ejecucion'],
   [/^pase_corto(?:_|$)/, 'tec_pase_corto'],
   [/^pase_largo(?:_|$)/, 'tec_pase_largo'],
+  [/^pase(?:_|$)/, 'tec_pase'],
   [/^remate(?:_|$)/, 'tec_remate'],
   [/^conducciones(?:_|$)/, 'tec_conducciones'],
   [/^juego_aereo(?:_|$)/, 'tec_juego_aereo'],
@@ -78,13 +79,22 @@ export function canonicalReportFieldKey(sourceKey: string): string {
     .trim()
     .replace(/[^a-z0-9_]/g, '_');
 
-  return LEGACY_FIELD_ALIASES.find(([pattern]) => pattern.test(key))?.[1] ?? key;
+  const alias = LEGACY_FIELD_ALIASES.find(([pattern]) => pattern.test(key))?.[1];
+  if (alias) return alias;
+
+  const position = key.match(/^(arquero|lateral|central|mediocentro|interior|extremo|mediapunta|punta)(?:_\d+)?$/);
+  return position ? `car_${position[1].toUpperCase()}` : key;
 }
 
 function normalizeReportValue(fieldKey: string, value: any) {
   if (/^(?:att_|tac_|tec_|tecf_|fisf_|menf_|psi_|fis_|rend_|ins_)/.test(fieldKey) && typeof value === 'string') {
     const trimmed = value.trim();
     if (/^[1-5]$/.test(trimmed)) return Number(trimmed);
+  }
+  const characteristic = fieldKey.match(/^car_(ARQUERO|LATERAL|CENTRAL|MEDIOCENTRO|INTERIOR|EXTREMO|MEDIAPUNTA|PUNTA)$/);
+  if (characteristic && typeof value === 'string') {
+    const label = value.split(':')[0].trim().toUpperCase();
+    if (label === 'SIN VER' || CARAC[characteristic[1]]?.some(([known]) => known === label)) return label;
   }
   return value;
 }
@@ -122,6 +132,13 @@ export function normalizeReportData(data: ReportData): ReportData {
   }
   if (!normalized.fpartido) {
     normalized.fpartido = excelSerialDate(normalized.partido) ?? normalized.fpartido;
+  }
+
+  if (FORM_CATS.includes(String(normalized.categoria ?? '').trim().toUpperCase()) && nivel(normalized) === 1) {
+    for (const key of ['control', 'pase', 'remate', 'conducciones', 'juego_aereo', 'pierna_habil', 'pierna_no_habil']) {
+      const value = normalized[`tec_${key}`];
+      if (normalized[`tecf_${key}`] == null && value != null) normalized[`tecf_${key}`] = value;
+    }
   }
 
   return normalized;
@@ -418,7 +435,7 @@ export const SECTIONS = [
     fields: d => [pitch('puesto', 'Puesto específico', {req: true, ctrl: true, short: 'Puesto específico'}), ...caracFields(d, false)]
   },
   {
-    id: 'f_tec', title: 'Atributos técnicos', desc: SCALE_NOTE + ' ' + FIRST_NOTE,
+    id: 'f_tec', radar: true, title: 'Atributos técnicos', desc: SCALE_NOTE + ' ' + FIRST_NOTE,
     when: isF, fields: () => tecFields('tecf_', TEC_F)
   },
   {
@@ -426,7 +443,7 @@ export const SECTIONS = [
     when: isF, fields: () => tacFields()
   },
   {
-    id: 'f_fis', title: 'Atributos físicos', desc: SCALE_NOTE + ' ' + FIRST_NOTE,
+    id: 'f_fis', radar: true, title: 'Atributos físicos', desc: SCALE_NOTE + ' ' + FIRST_NOTE,
     when: isF,
     fields: () => [
       ...[['altura', 'Altura'], ['peso', 'Peso'], ['velocidad', 'Velocidad'], ['resistencia', 'Resistencia']]
