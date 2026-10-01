@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import html2pdf from 'html2pdf.js';
 import type { ReportRow } from '@/lib/reports';
 import { keyOf, deleteReport } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
@@ -35,6 +36,45 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
       console.error(err);
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleDownloadPDF(reportId: string, playerName: string) {
+    try {
+      // Crear contenedor temporal para el PDF
+      const element = document.createElement('div');
+      element.style.padding = '20px';
+      element.style.fontFamily = 'Arial, sans-serif';
+      element.innerHTML = `
+        <div style="margin-bottom: 20px; border-bottom: 2px solid #0f3a22; padding-bottom: 10px;">
+          <h1 style="margin: 0 0 10px 0; color: #0f3a22;">Informe de Scouting</h1>
+          <p style="margin: 0; color: #666; font-size: 14px;">Generado: ${new Date().toLocaleDateString('es-ES')}</p>
+        </div>
+        <div style="margin-bottom: 20px;">
+          <h2 style="color: #0f3a22; margin-bottom: 10px;">Información del Jugador</h2>
+          <p style="margin: 5px 0;"><strong>Nombre:</strong> ${playerName}</p>
+          <p style="margin: 5px 0;"><strong>ID del Informe:</strong> ${reportId}</p>
+          <p style="margin: 5px 0;"><strong>Fecha de Descarga:</strong> ${new Date().toLocaleString('es-ES')}</p>
+        </div>
+        <div style="background-color: #f0f0f0; padding: 15px; border-radius: 8px;">
+          <p style="margin: 0; color: #666; font-size: 12px;">
+            Para ver el informe completo y editarlo, acceda a la plataforma Orense.
+          </p>
+        </div>
+      `;
+
+      const options = {
+        margin: 10,
+        filename: `informe-${playerName.replace(/\s+/g, '_')}-${reportId.slice(0, 8)}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' as const }
+      };
+
+      html2pdf().set(options).from(element).save();
+    } catch (err) {
+      console.error('Error al generar PDF:', err);
+      alert('Error al generar el PDF. Intenta de nuevo.');
     }
   }
 
@@ -433,6 +473,13 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
                         >
                           Editar / Ver
                         </Link>
+                        <button
+                          onClick={() => handleDownloadPDF(r.id, d.nombre || 'jugador')}
+                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors"
+                          title="Descargar informe como PDF"
+                        >
+                          📥 PDF
+                        </button>
                         <Link
                           href={`/players/${encodeURIComponent(pKey)}`}
                           className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-[#0f3a22] hover:bg-[#15502e] text-white transition-colors"
