@@ -103,11 +103,13 @@ export default function ReportPreviewModal({
       if (!contentRef.current) return;
 
       const options = {
-        margin: 10,
+        margin: [8, 8, 8, 8] as [number, number, number, number],
         filename: `informe-${nombre.replace(/\s+/g, '_')}-${reportId.slice(0, 8)}.pdf`,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' as const }
+        image: { type: 'jpeg' as const, quality: 0.95 },
+        html2canvas: { scale: 1.5, allowTaint: true, useCORS: true },
+        jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' as const },
+        pagebreak: { mode: 'avoid-all' as const },
+        autoPaging: true
       };
 
       html2pdf().set(options).from(contentRef.current).save();
@@ -166,12 +168,12 @@ export default function ReportPreviewModal({
           </div>
 
           {/* Resumen biográfico */}
-          <section className="mb-10">
-            <div className="mb-4">
+          <section className="mb-6 page-break-inside-avoid">
+            <div className="mb-3">
               <h2 className="text-xl font-bold text-emerald-900 uppercase tracking-wide">📋 Resumen Biográfico</h2>
-              <div className="h-1 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-2 mb-4"></div>
+              <div className="h-1 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-2 mb-3"></div>
             </div>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-5 flex gap-5 flex-wrap items-start">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex gap-4 flex-wrap items-start">
               {foto || fotoUrl ? (
                 <div className="w-20 h-28 bg-gray-300 rounded-lg flex-none flex items-center justify-center text-xs text-gray-600">
                   [Foto]
@@ -209,14 +211,14 @@ export default function ReportPreviewModal({
 
           {/* Informes deportivos */}
           {matchCards.length > 0 && (
-            <section className="mb-10">
-              <div className="mb-4">
+            <section className="mb-6 page-break-inside-avoid">
+              <div className="mb-3">
                 <h2 className="text-xl font-bold text-emerald-900 uppercase tracking-wide">⚽ Informes Deportivos por Partido</h2>
-                <div className="h-1 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-2 mb-4"></div>
+                <div className="h-1 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-2 mb-3"></div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {matchCards.map((c) => (
-                  <article key={c.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4 grid gap-2">
+                  <article key={c.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3 grid gap-2 text-sm">
                     <div className="flex justify-between gap-2 items-start">
                       <div>
                         <div className="text-xs text-gray-600">
@@ -277,12 +279,12 @@ export default function ReportPreviewModal({
 
           {/* Gráficos de araña */}
           {groups.length > 0 && (
-            <section className="mb-10">
-              <div className="mb-4">
+            <section className="mb-6 page-break-inside-avoid">
+              <div className="mb-3">
                 <h2 className="text-xl font-bold text-emerald-900 uppercase tracking-wide">📊 Análisis de Atributos (Gráficos)</h2>
-                <div className="h-1 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-2 mb-4"></div>
+                <div className="h-1 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-2 mb-3"></div>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {groups.map((g) => (
                   <div key={g.id} className="space-y-2">
                     <h3 className="font-bold text-base text-emerald-900 bg-emerald-50 p-2 rounded border-l-4 border-yellow-500">
@@ -305,7 +307,7 @@ export default function ReportPreviewModal({
           )}
 
           {/* Footer */}
-          <div className="mt-10 pt-6 border-t-2 border-emerald-900 space-y-3">
+          <div className="mt-6 pt-4 border-t-2 border-emerald-900 space-y-2">
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
               <p className="text-xs font-semibold text-emerald-900 mb-2">INFORMACIÓN DEL DOCUMENTO</p>
               <div className="grid grid-cols-2 gap-2 text-xs text-gray-700">
