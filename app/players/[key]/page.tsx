@@ -29,8 +29,14 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
   const byTime = [...reports].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
   const ordered = [...reports].sort((a, b) => nivel(a.data) - nivel(b.data) || +new Date(a.created_at) - +new Date(b.created_at));
   const prof = byTime.reduce<Record<string, any>>((acc, r) => {
-    for (const k of ['nombre', 'foto', 'foto_url', 'fnac', 'nacionalidad', 'altura', 'lateralidad', 'lugar_nac', 'puesto']) {
+    for (const k of ['nombre', 'foto', 'foto_url', 'fnac', 'nacionalidad', 'altura', 'lateralidad', 'lugar_nac']) {
       if (acc[k] == null && r.data[k] != null) acc[k] = r.data[k];
+    }
+    if (acc.puesto == null && r.data.puesto != null) {
+      acc.puesto = r.data.puesto;
+      acc.puestoReportId = r.id;
+      if (typeof r.data.pos_x === 'number') acc.posX = r.data.pos_x;
+      if (typeof r.data.pos_y === 'number') acc.posY = r.data.pos_y;
     }
     return acc;
   }, {});
@@ -73,6 +79,9 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
         fotoUrl={prof.foto_url}
         puesto={prof.puesto}
         lateralidad={prof.lateralidad}
+        puestoReportId={prof.puestoReportId}
+        posX={prof.posX}
+        posY={prof.posY}
         base={(
           [
             ['Fecha de nacimiento', prof.fnac ? `${fmtDate(prof.fnac)} (${ageOf(prof.fnac)} años)` : ''],

@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import html2pdf from 'html2pdf.js';
 import RadarChart from './RadarChart';
 import PositionPitch from './PositionPitch';
+import { createClient } from '@/lib/supabase/client';
+import { signedPhotoUrl } from '@/lib/reports';
 import { fmtDate, LEVELS } from '@/lib/formModel';
 
 interface MatchCard {
@@ -37,6 +39,8 @@ interface ReportPreviewModalProps {
   fotoUrl?: string;
   puesto?: string;
   lateralidad?: string;
+  posX?: number;
+  posY?: number;
   base: [string, string][];
   kpis: [string, string][];
   matchCards: MatchCard[];
@@ -85,12 +89,30 @@ export default function ReportPreviewModal({
   fotoUrl,
   puesto,
   lateralidad,
+  posX,
+  posY,
   base,
   kpis,
   matchCards,
   groups
 }: ReportPreviewModalProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const [photo, setPhoto] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    if (foto) {
+      const supabase = createClient();
+      signedPhotoUrl(supabase, foto).then((u) => alive && setPhoto(u));
+    } else if (fotoUrl) {
+      setPhoto(fotoUrl);
+    } else {
+      setPhoto(null);
+    }
+    return () => {
+      alive = false;
+    };
+  }, [foto, fotoUrl]);
 
   useEffect(() => {
     if (isOpen) {
@@ -189,10 +211,8 @@ export default function ReportPreviewModal({
               <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex gap-2 flex-wrap items-start">
-              {foto || fotoUrl ? (
-                <div className="w-16 h-20 bg-gray-300 rounded-lg flex-none flex items-center justify-center text-xs text-gray-600">
-                  [Foto]
-                </div>
+              {photo ? (
+                <img src={photo} alt={`Foto de ${nombre}`} className="w-16 h-20 object-cover rounded-lg flex-none" />
               ) : (
                 <span className="w-16 h-20 rounded-lg bg-gray-300 grid place-items-center font-bold text-lg text-gray-600 flex-none">
                   {nombre.split(/\s+/).map((x) => x[0]).slice(0, 2).join('')}
@@ -221,7 +241,7 @@ export default function ReportPreviewModal({
                   ))}
                 </div>
               </div>
-              <PositionPitch puesto={puesto} lateralidad={lateralidad} />
+              <PositionPitch puesto={puesto} lateralidad={lateralidad} posX={posX} posY={posY} />
             </div>
           </section>
 

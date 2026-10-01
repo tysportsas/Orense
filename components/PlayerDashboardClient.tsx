@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { signedPhotoUrl } from '@/lib/reports';
+import { signedPhotoUrl, getReport, updateReport } from '@/lib/reports';
 import RadarChart from './RadarChart';
 import PositionPitch from './PositionPitch';
 
@@ -68,6 +68,9 @@ export default function PlayerDashboardClient({
   fotoUrl,
   puesto,
   lateralidad,
+  puestoReportId,
+  posX,
+  posY,
   base,
   kpis,
   matchCards,
@@ -78,6 +81,9 @@ export default function PlayerDashboardClient({
   fotoUrl?: string;
   puesto?: string;
   lateralidad?: string;
+  puestoReportId?: string;
+  posX?: number;
+  posY?: number;
   base: [string, string][];
   kpis: [string, string][];
   matchCards: MatchCard[];
@@ -85,6 +91,18 @@ export default function PlayerDashboardClient({
 }) {
   const [photo, setPhoto] = useState<string | null>(null);
   const [pick, setPick] = useState<Record<string, string>>({});
+
+  async function handlePositionChange(x: number, y: number) {
+    if (!puestoReportId) return;
+    try {
+      const supabase = createClient();
+      const report = await getReport(supabase, puestoReportId);
+      if (!report) return;
+      await updateReport(supabase, puestoReportId, { ...report.data, pos_x: x, pos_y: y });
+    } catch (err) {
+      console.error('Error al guardar la posición:', err);
+    }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -136,7 +154,14 @@ export default function PlayerDashboardClient({
               ))}
             </div>
           </div>
-          <PositionPitch puesto={puesto} lateralidad={lateralidad} />
+          <PositionPitch
+            puesto={puesto}
+            lateralidad={lateralidad}
+            posX={posX}
+            posY={posY}
+            editable={Boolean(puestoReportId)}
+            onPositionChange={handlePositionChange}
+          />
         </div>
       </section>
 

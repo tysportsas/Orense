@@ -42,6 +42,8 @@ interface PreviewData {
   fotoUrl?: string;
   puesto?: string;
   lateralidad?: string;
+  posX?: number;
+  posY?: number;
   base: [string, string][];
   kpis: [string, string][];
   matchCards: MatchCard[];
@@ -100,6 +102,9 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
       const byTime = [...playerReports].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
       const puesto = byTime.find(r => r.data.puesto)?.data.puesto;
       const lateralidadProf = byTime.find(r => r.data.lateralidad)?.data.lateralidad;
+      const posReport = byTime.find(r => typeof r.data.pos_x === 'number' && typeof r.data.pos_y === 'number');
+      const posX = posReport?.data.pos_x;
+      const posY = posReport?.data.pos_y;
 
       // Construir base
       const base: [string, string][] = [];
@@ -198,6 +203,8 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
         fotoUrl: d.foto_url,
         puesto,
         lateralidad: lateralidadProf,
+        posX,
+        posY,
         base,
         kpis,
         matchCards: matchCardsFormatted,
@@ -662,6 +669,8 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
           fotoUrl={previewData.fotoUrl}
           puesto={previewData.puesto}
           lateralidad={previewData.lateralidad}
+          posX={previewData.posX}
+          posY={previewData.posY}
           base={previewData.base}
           kpis={previewData.kpis}
           matchCards={previewData.matchCards}
