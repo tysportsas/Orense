@@ -121,7 +121,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
       const levels = [...new Set(playerReports.map((r) => nivel(r.data)).filter(Boolean))].sort();
       const matches = new Set(playerReports.map((r) => (r.data.partido || '') + '|' + (r.data.fpartido || ''))).size;
       const cur = playerReports.find((r) => r.data.valoracion);
-      
+
       const kpis: [string, string][] = [
         [String(playerReports.length), playerReports.length === 1 ? 'Informe' : 'Informes'],
         [String(matches), matches === 1 ? 'Partido observado' : 'Partidos observados'],
@@ -181,7 +181,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
             return axes ? { report: r, axes } : null;
           })
           .filter(Boolean) as { report: (typeof playerReports)[number]; axes: { label: string; value: number; text: string }[] }[];
-        
+
         return {
           ...g,
           series: series.map((s) => {

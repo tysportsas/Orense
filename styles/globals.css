@@ -13,11 +13,14 @@ body {
 }
 
 .badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 2px 12px;
   border-radius: 999px;
   font-weight: 600;
   font-size: 13.5px;
+  line-height: 1.2;
   background: #f3f6f1;
   border: 1.5px solid #d3dbd0;
   white-space: nowrap;

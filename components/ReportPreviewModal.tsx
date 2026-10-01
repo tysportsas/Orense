@@ -94,6 +94,8 @@ function waitForImages(container: HTMLElement) {
   );
 }
 
+// Eliminado drawPhotoOnCanvas porque ya no usamos canvas
+
 export default function ReportPreviewModal({
   isOpen,
   onClose,
@@ -112,37 +114,64 @@ export default function ReportPreviewModal({
 }: ReportPreviewModalProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  // Refs para leer estado actual sin stale closure en callbacks asíncronos
+  const photoLoadingRef = useRef(false);
+  const photoRef = useRef<string | null>(null);           // siempre el dataUrl más reciente
+
+  function setPhotoLoadingSync(val: boolean) {
+    photoLoadingRef.current = val;
+    setPhotoLoading(val);
+  }
 
   useEffect(() => {
     let alive = true;
 
     async function resolvePhoto() {
-      let url: string | null = null;
-      if (foto) {
-        const supabase = createClient();
-        url = await signedPhotoUrl(supabase, foto);
-      } else if (fotoUrl) {
-        url = fotoUrl;
-      }
-      if (!url) {
+      // Sin foto registrada → salir sin mostrar indicador de carga
+      if (!foto && !fotoUrl) {
         if (alive) setPhoto(null);
         return;
       }
-      // Se descarga como data URL (en lugar de usar crossOrigin en el <img>)
-      // para que html2canvas la capture sin bloqueos de CORS al generar el PDF.
+
+      if (alive) setPhotoLoadingSync(true);
+
       try {
-        const res = await fetch(url);
-        const blob = await res.blob();
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-        if (alive) setPhoto(dataUrl);
+        // Usamos el proxy server-side /api/photo-proxy para obtener la imagen
+        // como base64 data URL, evitando completamente los bloqueos de CORS
+        // que html2canvas sufre al intentar renderizar imágenes externas.
+        let proxyUrl: string;
+        if (foto) {
+          proxyUrl = `/api/photo-proxy?path=${encodeURIComponent(foto)}`;
+        } else {
+          proxyUrl = `/api/photo-proxy?url=${encodeURIComponent(fotoUrl!)}`;
+        }
+
+        const res = await fetch(proxyUrl);
+        if (!res.ok) throw new Error(`Proxy HTTP ${res.status}`);
+        const { dataUrl, error } = await res.json();
+        if (error || !dataUrl) throw new Error(error || 'Sin dataUrl en respuesta');
+
+        if (alive) { photoRef.current = dataUrl; setPhoto(dataUrl); }
       } catch (err) {
-        console.error('No se pudo preparar la foto para el PDF:', err);
-        if (alive) setPhoto(url);
+        console.warn('[ReportPreviewModal] Error al obtener foto via proxy:', err);
+        // Fallback: intentar URL directa (puede no funcionar en el PDF pero sí en preview)
+        if (alive) {
+          if (foto) {
+            const supabase = createClient();
+            const directUrl = await signedPhotoUrl(supabase, foto);
+            photoRef.current = directUrl;
+            setPhoto(directUrl);
+          } else if (fotoUrl) {
+            photoRef.current = fotoUrl;
+            setPhoto(fotoUrl);
+          } else {
+            photoRef.current = null;
+            setPhoto(null);
+          }
+        }
+      } finally {
+        if (alive) setPhotoLoadingSync(false);
       }
     }
 
@@ -151,6 +180,8 @@ export default function ReportPreviewModal({
       alive = false;
     };
   }, [foto, fotoUrl]);
+
+
 
   useEffect(() => {
     if (isOpen) {
@@ -167,23 +198,48 @@ export default function ReportPreviewModal({
     const el = contentRef.current;
     if (!el) return;
 
-    // El contenedor usa overflow-y:auto + max-height para el scroll en pantalla;
-    // html2canvas solo captura lo visible, así que hay que expandirlo antes de generar el PDF.
+    // Si la foto aún se está resolviendo (signedPhotoUrl / fetch a dataUrl),
+    // esperar hasta 8 s para no capturar el PDF con la foto en blanco.
+    // Usamos la ref para evitar el bug de closure stale con el estado de React.
+    if (photoLoadingRef.current) {
+      await new Promise<void>((resolve) => {
+        const deadline = Date.now() + 8000;
+        const check = () => {
+          if (!photoLoadingRef.current) return resolve();
+          if (Date.now() >= deadline) {
+            console.warn('Timeout esperando la foto; el PDF puede no incluirla.');
+            return resolve();
+          }
+          setTimeout(check, 100);
+        };
+        check();
+      });
+    }
+
+
+
+    // Expandir para captura completa
     const originalMaxHeight = el.style.maxHeight;
     const originalOverflowY = el.style.overflowY;
     el.style.maxHeight = 'none';
     el.style.overflowY = 'visible';
 
     try {
-      // La foto se resuelve de forma asíncrona (signedPhotoUrl); si aún no terminó
-      // de cargar en el <img>, html2canvas la capturaría en blanco.
+      // Esperar a que todas las imágenes estáticas (logo, etc.) estén cargadas.
       await waitForImages(el);
 
       const options = {
         margin: [8, 6, 8, 6] as [number, number, number, number],
         filename: `informe-${nombre.replace(/\s+/g, '_')}-${reportId.slice(0, 8)}.pdf`,
         image: { type: 'jpeg' as const, quality: 0.95 },
-        html2canvas: { scale: 1.5, allowTaint: true, useCORS: true, logging: false, windowWidth: el.scrollWidth, windowHeight: el.scrollHeight },
+        html2canvas: {
+          scale: 1.5,
+          useCORS: false,
+          allowTaint: true,
+          logging: false,
+          windowWidth: el.scrollWidth,
+          windowHeight: el.scrollHeight
+        },
         jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' as const, compress: true },
         pagebreak: { mode: ['css', 'avoid-all'], avoid: ['section', 'article'] }
       };
@@ -209,10 +265,11 @@ export default function ReportPreviewModal({
           <div className="flex gap-3">
             <button
               onClick={handleDownloadPDF}
-              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 transition-colors"
-              title="Descargar informe como PDF"
+              disabled={photoLoading}
+              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 transition-colors disabled:opacity-60 disabled:cursor-wait"
+              title={photoLoading ? 'Preparando foto...' : 'Descargar informe como PDF'}
             >
-              ⬇️ Descargar PDF
+              {photoLoading ? '⏳ Preparando...' : '⬇️ Descargar PDF'}
             </button>
             <button
               onClick={onClose}
@@ -254,7 +311,12 @@ export default function ReportPreviewModal({
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex gap-2 flex-wrap items-start">
               {photo ? (
-                <img src={photo} alt={`Foto de ${nombre}`} className="w-16 h-20 object-cover rounded-lg flex-none" />
+                <img
+                  src={photo}
+                  alt={nombre}
+                  crossOrigin="anonymous"
+                  className="w-16 h-20 object-cover rounded-lg flex-shrink-0"
+                />
               ) : (
                 <span className="w-16 h-20 rounded-lg bg-gray-300 grid place-items-center font-bold text-lg text-gray-600 flex-none">
                   {nombre.split(/\s+/).map((x) => x[0]).slice(0, 2).join('')}
@@ -417,9 +479,10 @@ export default function ReportPreviewModal({
           </button>
           <button
             onClick={handleDownloadPDF}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+            disabled={photoLoading}
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-60 disabled:cursor-wait"
           >
-            ⬇️ Descargar PDF
+            {photoLoading ? '⏳ Preparando...' : '⬇️ Descargar PDF'}
           </button>
         </div>
       </div>
