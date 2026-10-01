@@ -91,16 +91,20 @@ export default function PlayerDashboardClient({
 }) {
   const [photo, setPhoto] = useState<string | null>(null);
   const [pick, setPick] = useState<Record<string, string>>({});
+  const [posStatus, setPosStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   async function handlePositionChange(x: number, y: number) {
     if (!puestoReportId) return;
+    setPosStatus('saving');
     try {
       const supabase = createClient();
       const report = await getReport(supabase, puestoReportId);
-      if (!report) return;
+      if (!report) throw new Error('Informe no encontrado');
       await updateReport(supabase, puestoReportId, { ...report.data, pos_x: x, pos_y: y });
+      setPosStatus('saved');
     } catch (err) {
       console.error('Error al guardar la posición:', err);
+      setPosStatus('error');
     }
   }
 
@@ -154,14 +158,19 @@ export default function PlayerDashboardClient({
               ))}
             </div>
           </div>
-          <PositionPitch
-            puesto={puesto}
-            lateralidad={lateralidad}
-            posX={posX}
-            posY={posY}
-            editable={Boolean(puestoReportId)}
-            onPositionChange={handlePositionChange}
-          />
+          <div className="flex flex-col items-center gap-1">
+            <PositionPitch
+              puesto={puesto}
+              lateralidad={lateralidad}
+              posX={posX}
+              posY={posY}
+              editable={Boolean(puestoReportId)}
+              onPositionChange={handlePositionChange}
+            />
+            {posStatus === 'saving' && <span className="text-xs text-muted">Guardando…</span>}
+            {posStatus === 'saved' && <span className="text-xs text-turf">Posición guardada ✓</span>}
+            {posStatus === 'error' && <span className="text-xs text-red-600">Error al guardar</span>}
+          </div>
         </div>
       </section>
 

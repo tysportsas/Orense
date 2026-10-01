@@ -80,6 +80,20 @@ function externalLinkLabel(value: string, fallback: string) {
   }
 }
 
+function waitForImages(container: HTMLElement) {
+  const imgs = Array.from(container.querySelectorAll('img'));
+  return Promise.all(
+    imgs.map((img) => {
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        img.addEventListener('load', () => resolve(), { once: true });
+        img.addEventListener('error', () => resolve(), { once: true });
+        setTimeout(() => resolve(), 3000);
+      });
+    })
+  );
+}
+
 export default function ReportPreviewModal({
   isOpen,
   onClose,
@@ -137,6 +151,10 @@ export default function ReportPreviewModal({
     el.style.overflowY = 'visible';
 
     try {
+      // La foto se resuelve de forma asíncrona (signedPhotoUrl); si aún no terminó
+      // de cargar en el <img>, html2canvas la capturaría en blanco.
+      await waitForImages(el);
+
       const options = {
         margin: [8, 6, 8, 6] as [number, number, number, number],
         filename: `informe-${nombre.replace(/\s+/g, '_')}-${reportId.slice(0, 8)}.pdf`,
@@ -212,7 +230,7 @@ export default function ReportPreviewModal({
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex gap-2 flex-wrap items-start">
               {photo ? (
-                <img src={photo} alt={`Foto de ${nombre}`} className="w-16 h-20 object-cover rounded-lg flex-none" />
+                <img src={photo} alt={`Foto de ${nombre}`} crossOrigin="anonymous" className="w-16 h-20 object-cover rounded-lg flex-none" />
               ) : (
                 <span className="w-16 h-20 rounded-lg bg-gray-300 grid place-items-center font-bold text-lg text-gray-600 flex-none">
                   {nombre.split(/\s+/).map((x) => x[0]).slice(0, 2).join('')}

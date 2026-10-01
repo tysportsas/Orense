@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ReportRow } from '@/lib/reports';
-import { keyOf, deleteReport, getReport, signedPhotoUrl } from '@/lib/reports';
+import { keyOf, deleteReport, getReport, signedPhotoUrl, listReportsForPlayer } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
 import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, nivel, NACIONALIDADES, ageOf, fmtTs, shortVal, radarAxes, visibleSections, excelSerialDate } from '@/lib/formModel';
 import ReportPreviewModal from './ReportPreviewModal';
@@ -96,9 +96,11 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
 
       const d = report.data;
       const pKey = keyOf(d);
-      
-      // Obtener todos los informes del jugador para calcular gráficos
-      const playerReports = reports.filter(r => keyOf(r.data) === pKey);
+
+      // Obtener todos los informes del jugador directamente de la base de datos
+      // (no del estado local `reports`, que puede estar desactualizado si la
+      // posición u otros datos se guardaron desde otra pantalla).
+      const playerReports = await listReportsForPlayer(supabase, pKey);
       const byTime = [...playerReports].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
       const puesto = byTime.find(r => r.data.puesto)?.data.puesto;
       const lateralidadProf = byTime.find(r => r.data.lateralidad)?.data.lateralidad;
