@@ -311,11 +311,14 @@ export default function ReportPreviewModal({
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex gap-2 flex-wrap items-start">
               {photo ? (
-                <img
-                  src={photo}
-                  alt={nombre}
-                  crossOrigin="anonymous"
-                  className="w-16 h-20 object-cover rounded-lg flex-shrink-0"
+                <div
+                  style={{
+                    backgroundImage: `url(${photo})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'top center',
+                  }}
+                  className="w-16 h-20 rounded-lg flex-shrink-0"
+                  title={nombre}
                 />
               ) : (
                 <span className="w-16 h-20 rounded-lg bg-gray-300 grid place-items-center font-bold text-lg text-gray-600 flex-none">
