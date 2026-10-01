@@ -14,23 +14,27 @@ function Avatar({ nombre, foto }: { nombre: string; foto: string | null }) {
   useEffect(() => {
     let alive = true;
     if (foto) {
-      const supabase = createClient();
-      signedPhotoUrl(supabase, foto).then((u) => alive && setUrl(u));
+      if (/^https?:\/\//i.test(foto)) {
+        fetch(`/api/photo-proxy?url=${encodeURIComponent(foto)}`)
+          .then((res) => res.json())
+          .then((data) => alive && data.dataUrl && setUrl(data.dataUrl))
+          .catch(console.error);
+      } else {
+        const supabase = createClient();
+        signedPhotoUrl(supabase, foto).then((u) => alive && setUrl(u));
+      }
     }
     return () => {
       alive = false;
     };
   }, [foto]);
-  const initials = nombre
-    .split(/\s+/)
-    .map((x) => x[0])
-    .slice(0, 2)
-    .join('');
   if (url) return <img src={url} alt="" className="w-11 h-14 object-cover rounded-lg flex-none" />;
   return (
-    <span className="w-11 h-14 rounded-lg bg-surface2 border border-line grid place-items-center font-display font-bold text-muted flex-none">
-      {initials}
-    </span>
+    <div className="w-11 h-14 rounded-lg bg-surface2 border border-line grid place-items-center flex-none overflow-hidden text-gray-400/80 p-1">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-full h-full opacity-70 mt-2">
+        <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
+      </svg>
+    </div>
   );
 }
 
