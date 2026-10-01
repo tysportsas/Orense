@@ -115,14 +115,38 @@ export default function ReportPreviewModal({
 
   useEffect(() => {
     let alive = true;
-    if (foto) {
-      const supabase = createClient();
-      signedPhotoUrl(supabase, foto).then((u) => alive && setPhoto(u));
-    } else if (fotoUrl) {
-      setPhoto(fotoUrl);
-    } else {
-      setPhoto(null);
+
+    async function resolvePhoto() {
+      let url: string | null = null;
+      if (foto) {
+        const supabase = createClient();
+        url = await signedPhotoUrl(supabase, foto);
+      } else if (fotoUrl) {
+        url = fotoUrl;
+      }
+      if (!url) {
+        if (alive) setPhoto(null);
+        return;
+      }
+      // Se descarga como data URL (en lugar de usar crossOrigin en el <img>)
+      // para que html2canvas la capture sin bloqueos de CORS al generar el PDF.
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        if (alive) setPhoto(dataUrl);
+      } catch (err) {
+        console.error('No se pudo preparar la foto para el PDF:', err);
+        if (alive) setPhoto(url);
+      }
     }
+
+    resolvePhoto();
     return () => {
       alive = false;
     };
@@ -230,7 +254,7 @@ export default function ReportPreviewModal({
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex gap-2 flex-wrap items-start">
               {photo ? (
-                <img src={photo} alt={`Foto de ${nombre}`} crossOrigin="anonymous" className="w-16 h-20 object-cover rounded-lg flex-none" />
+                <img src={photo} alt={`Foto de ${nombre}`} className="w-16 h-20 object-cover rounded-lg flex-none" />
               ) : (
                 <span className="w-16 h-20 rounded-lg bg-gray-300 grid place-items-center font-bold text-lg text-gray-600 flex-none">
                   {nombre.split(/\s+/).map((x) => x[0]).slice(0, 2).join('')}
