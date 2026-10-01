@@ -73,7 +73,7 @@ export default function PlayersList({ initialPlayers }: { initialPlayers: Player
             key={p.player_key}
             className="bg-surface border border-line rounded-xl p-3 flex items-center gap-3 flex-wrap"
           >
-            <Avatar nombre={p.nombre} foto={p.foto} />
+            <Avatar nombre={p.nombre} foto={p.foto || p.latest_data?.foto_url || p.latest_data?.foto || null} />
             <div className="flex-1 min-w-0">
               <div className="font-display font-bold text-xl">{p.nombre}</div>
               <div className="text-sm text-muted">{[p.categoria, p.club].filter(Boolean).join(', ')}</div>

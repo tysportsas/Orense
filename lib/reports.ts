@@ -25,6 +25,7 @@ export interface PlayerRow {
   foto: string | null;
   n_informes: number;
   last_report_at: string;
+  latest_data?: ReportData;
 }
 
 export interface LatestPlayerReport {
