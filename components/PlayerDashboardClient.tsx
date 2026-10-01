@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { signedPhotoUrl } from '@/lib/reports';
 import RadarChart from './RadarChart';
+import PositionPitch from './PositionPitch';
 
 interface MatchCard {
   id: string;
@@ -65,6 +66,8 @@ export default function PlayerDashboardClient({
   nombre,
   foto,
   fotoUrl,
+  puesto,
+  lateralidad,
   base,
   kpis,
   matchCards,
@@ -73,6 +76,8 @@ export default function PlayerDashboardClient({
   nombre: string;
   foto?: string;
   fotoUrl?: string;
+  puesto?: string;
+  lateralidad?: string;
   base: [string, string][];
   kpis: [string, string][];
   matchCards: MatchCard[];
@@ -131,6 +136,7 @@ export default function PlayerDashboardClient({
               ))}
             </div>
           </div>
+          <PositionPitch puesto={puesto} lateralidad={lateralidad} />
         </div>
       </section>
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import html2pdf from 'html2pdf.js';
 import RadarChart from './RadarChart';
+import PositionPitch from './PositionPitch';
 import { fmtDate, LEVELS } from '@/lib/formModel';
 
 interface MatchCard {
@@ -34,6 +35,8 @@ interface ReportPreviewModalProps {
   nombre: string;
   foto?: string;
   fotoUrl?: string;
+  puesto?: string;
+  lateralidad?: string;
   base: [string, string][];
   kpis: [string, string][];
   matchCards: MatchCard[];
@@ -80,6 +83,8 @@ export default function ReportPreviewModal({
   nombre,
   foto,
   fotoUrl,
+  puesto,
+  lateralidad,
   base,
   kpis,
   matchCards,
@@ -216,6 +221,7 @@ export default function ReportPreviewModal({
                   ))}
                 </div>
               </div>
+              <PositionPitch puesto={puesto} lateralidad={lateralidad} />
             </div>
           </section>
 

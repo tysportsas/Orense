@@ -40,6 +40,8 @@ interface PreviewData {
   nombre: string;
   foto?: string;
   fotoUrl?: string;
+  puesto?: string;
+  lateralidad?: string;
   base: [string, string][];
   kpis: [string, string][];
   matchCards: MatchCard[];
@@ -95,7 +97,10 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
       
       // Obtener todos los informes del jugador para calcular gráficos
       const playerReports = reports.filter(r => keyOf(r.data) === pKey);
-      
+      const byTime = [...playerReports].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+      const puesto = byTime.find(r => r.data.puesto)?.data.puesto;
+      const lateralidadProf = byTime.find(r => r.data.lateralidad)?.data.lateralidad;
+
       // Construir base
       const base: [string, string][] = [];
       if (d.fnac) base.push(['Fecha de nacimiento', `${fmtDate(d.fnac)} (${ageOf(d.fnac)} años)`]);
@@ -191,6 +196,8 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
         nombre: d.nombre || 'Jugador',
         foto: d.foto,
         fotoUrl: d.foto_url,
+        puesto,
+        lateralidad: lateralidadProf,
         base,
         kpis,
         matchCards: matchCardsFormatted,
@@ -653,6 +660,8 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
           nombre={previewData.nombre}
           foto={previewData.foto}
           fotoUrl={previewData.fotoUrl}
+          puesto={previewData.puesto}
+          lateralidad={previewData.lateralidad}
           base={previewData.base}
           kpis={previewData.kpis}
           matchCards={previewData.matchCards}
