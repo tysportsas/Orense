@@ -144,17 +144,33 @@ export default function ReportPreviewModal({
 
         {/* Content */}
         <div ref={contentRef} className="px-6 py-6 max-h-[calc(100vh-200px)] overflow-y-auto bg-white">
-          {/* Header */}
-          <div className="mb-6 border-b-2 border-emerald-900 pb-4">
-            <h1 className="text-3xl font-bold text-emerald-900">Informe de Scouting</h1>
-            <p className="text-gray-600 text-sm mt-2">Generado: {new Date().toLocaleDateString('es-ES')}</p>
+          {/* Header con Logo */}
+          <div className="mb-8 pb-6 border-b-2 border-emerald-900">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex-shrink-0">
+                <img 
+                  src="/orense-crest.png" 
+                  alt="Escudo Orense" 
+                  className="h-16 w-16 object-contain"
+                />
+              </div>
+              <div className="flex-1">
+                <h1 className="text-4xl font-bold text-emerald-900">SECRETARÍA TÉCNICA</h1>
+                <p className="text-gray-600 text-sm mt-1">Método Orense de Scouting</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-gray-600 text-xs">Generado: {new Date().toLocaleDateString('es-ES')}</p>
+              <p className="text-gray-600 text-xs mt-1">Hora: {new Date().toLocaleTimeString('es-ES')}</p>
+            </div>
           </div>
 
           {/* Resumen biográfico */}
-          <section className="mb-8">
-            <h2 className="text-2xl font-bold text-emerald-900 border-b-2 border-yellow-500 pb-2 mb-4">
-              Resumen biográfico
-            </h2>
+          <section className="mb-10">
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-emerald-900 uppercase tracking-wide">📋 Resumen Biográfico</h2>
+              <div className="h-1 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-2 mb-4"></div>
+            </div>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-5 flex gap-5 flex-wrap items-start">
               {foto || fotoUrl ? (
                 <div className="w-20 h-28 bg-gray-300 rounded-lg flex-none flex items-center justify-center text-xs text-gray-600">
@@ -193,10 +209,11 @@ export default function ReportPreviewModal({
 
           {/* Informes deportivos */}
           {matchCards.length > 0 && (
-            <section className="mb-8">
-              <h2 className="text-2xl font-bold text-emerald-900 border-b-2 border-yellow-500 pb-2 mb-4">
-                Informe deportivo de cada partido observado
-              </h2>
+            <section className="mb-10">
+              <div className="mb-4">
+                <h2 className="text-xl font-bold text-emerald-900 uppercase tracking-wide">⚽ Informes Deportivos por Partido</h2>
+                <div className="h-1 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-2 mb-4"></div>
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {matchCards.map((c) => (
                   <article key={c.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4 grid gap-2">
@@ -260,20 +277,23 @@ export default function ReportPreviewModal({
 
           {/* Gráficos de araña */}
           {groups.length > 0 && (
-            <section className="mb-8">
-              <h2 className="text-2xl font-bold text-emerald-900 border-b-2 border-yellow-500 pb-2 mb-4">
-                Informe deportivo: gráficos de araña
-              </h2>
+            <section className="mb-10">
+              <div className="mb-4">
+                <h2 className="text-xl font-bold text-emerald-900 uppercase tracking-wide">📊 Análisis de Atributos (Gráficos)</h2>
+                <div className="h-1 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-2 mb-4"></div>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 {groups.map((g) => (
-                  <div key={g.id}>
-                    <h3 className="font-bold text-lg text-gray-900 mb-3">{g.title}</h3>
+                  <div key={g.id} className="space-y-2">
+                    <h3 className="font-bold text-base text-emerald-900 bg-emerald-50 p-2 rounded border-l-4 border-yellow-500">
+                      {g.title}
+                    </h3>
                     {g.series.length > 0 && (
                       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                        <div className="text-xs text-gray-600 mb-2">
-                          Último partido: {g.series[0].label}
+                        <div className="text-xs font-semibold text-gray-700 mb-3 p-2 bg-white rounded border-l-2 border-emerald-600">
+                          📅 {g.series[0].label}
                         </div>
-                        <div style={{ width: '100%', height: '250px' }}>
+                        <div style={{ width: '100%', height: '300px', marginTop: '12px' }}>
                           <RadarChart axes={g.series[0].axes} />
                         </div>
                       </div>
@@ -285,11 +305,23 @@ export default function ReportPreviewModal({
           )}
 
           {/* Footer */}
-          <div className="mt-8 pt-4 border-t border-gray-200 text-xs text-gray-600">
-            <p>
-              ID del Informe: <code className="bg-gray-100 px-2 py-1 rounded">{reportId}</code>
+          <div className="mt-10 pt-6 border-t-2 border-emerald-900 space-y-3">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+              <p className="text-xs font-semibold text-emerald-900 mb-2">INFORMACIÓN DEL DOCUMENTO</p>
+              <div className="grid grid-cols-2 gap-2 text-xs text-gray-700">
+                <div>
+                  <span className="font-semibold text-gray-900">ID del Informe:</span>
+                  <code className="block bg-white px-2 py-1 rounded mt-1 font-mono text-gray-600">{reportId.slice(0, 12)}</code>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-900">Jugador:</span>
+                  <p className="block text-gray-700 mt-1">{nombre}</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-gray-600 text-center py-2">
+              Generado por <strong>Método Orense de Scouting</strong> • Secretaría Técnica
             </p>
-            <p className="mt-2">Generado por Método Orense de Scouting</p>
           </div>
         </div>
 
