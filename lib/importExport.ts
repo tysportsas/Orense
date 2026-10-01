@@ -25,8 +25,14 @@ function setImportedValue(rowData: ReportData, key: string, value: unknown) {
     }
   }
 
+  // Evita que dos columnas distintas mal clasificadas con la misma clave
+  // (p. ej. "Valor del partido" y "Partido visto" cayendo ambas en "partido")
+  // se sobrescriban entre sí; conserva el primer valor recibido.
+  if (rowData[key] != null && rowData[key] !== '') return;
+
   rowData[key] = key === 'fnac' || key === 'fpartido' ? excelSerialDate(value) ?? text : text;
 }
+
 
 /** Mapeador de columnas comunes de CSV/Excel a las claves internas del Método Orense */
 const HEADER_MAP: Record<string, string> = {
@@ -59,6 +65,13 @@ const HEADER_MAP: Record<string, string> = {
   puesto_especifico: 'puesto',
   val_partido: 'val_partido',
   valoracion_partido: 'val_partido',
+  importancia_partido: 'val_partido',
+  relevancia_partido: 'val_partido',
+  impacto_partido: 'val_partido',
+  importancia_del_partido: 'val_partido',
+  relevancia_del_partido: 'val_partido',
+  value_match: 'val_partido',
+  match_importance: 'val_partido',
   val_proy: 'val_proy',
   valoracion_proyeccion: 'val_proy',
   valoracion: 'valoracion',
@@ -107,7 +120,7 @@ export function mapHeaderToFieldKey(rawHeader: string): string {
     return 'fpartido';
   }
 
-  if (clean.includes('valoracion_del_partido') || clean.includes('val_partido')) {
+  if (clean.includes('valoracion_del_partido') || clean.includes('val_partido') || clean.includes('valor_del_partido') || clean.includes('valor_partido') || clean.includes('importancia_del_partido') || clean.includes('importancia_partido') || clean.includes('relevancia_del_partido') || clean.includes('relevancia_partido')) {
     return 'val_partido';
   }
 

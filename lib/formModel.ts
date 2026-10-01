@@ -140,15 +140,22 @@ export function normalizeReportData(data: ReportData): ReportData {
     }
   }
 
-  for (const fieldKey of ['fnac', 'fpartido']) {
-    normalized[fieldKey] = excelSerialDate(normalized[fieldKey]) ?? normalized[fieldKey];
+  // Convertir seriales de Excel a fechas ISO
+  for (const fieldKey of ['fnac', 'fpartido', 'marca_temporal']) {
+    const converted = excelSerialDate(normalized[fieldKey]);
+    if (converted) {
+      normalized[fieldKey] = converted;
+    }
   }
+  
+  // Si partido es serial pero fpartido aún no tiene fecha, intentar conversión
   if (!normalized.fpartido) {
-    normalized.fpartido = excelSerialDate(normalized.partido) ?? normalized.fpartido;
-  }
-  if (excelSerialDate(normalized.partido)) {
-    // El nombre del partido quedó con un serial de Excel; ya se usó arriba para fpartido.
-    delete normalized.partido;
+    const serialDate = excelSerialDate(normalized.partido);
+    if (serialDate) {
+      normalized.fpartido = serialDate;
+      // Limpiar partido si era un serial (usuario puede completarlo manualmente)
+      normalized.partido = '';
+    }
   }
 
   if (typeof normalized.agente === 'string' && /^https?:\/\//i.test(normalized.agente.trim())) {
