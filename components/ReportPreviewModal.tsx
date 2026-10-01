@@ -99,24 +99,33 @@ export default function ReportPreviewModal({
   }, [isOpen]);
 
   async function handleDownloadPDF() {
-    try {
-      if (!contentRef.current) return;
+    const el = contentRef.current;
+    if (!el) return;
 
+    // El contenedor usa overflow-y:auto + max-height para el scroll en pantalla;
+    // html2canvas solo captura lo visible, así que hay que expandirlo antes de generar el PDF.
+    const originalMaxHeight = el.style.maxHeight;
+    const originalOverflowY = el.style.overflowY;
+    el.style.maxHeight = 'none';
+    el.style.overflowY = 'visible';
+
+    try {
       const options = {
-        margin: [5, 5, 5, 5] as [number, number, number, number],
+        margin: [8, 6, 8, 6] as [number, number, number, number],
         filename: `informe-${nombre.replace(/\s+/g, '_')}-${reportId.slice(0, 8)}.pdf`,
         image: { type: 'jpeg' as const, quality: 0.95 },
-        html2canvas: { scale: 1.2, allowTaint: true, useCORS: true, logging: false },
+        html2canvas: { scale: 1.5, allowTaint: true, useCORS: true, logging: false, windowWidth: el.scrollWidth, windowHeight: el.scrollHeight },
         jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' as const, compress: true },
-        pagebreak: { mode: 'css' as const, before: ['section'] },
-        useCORS: true,
-        letterRendering: true
+        pagebreak: { mode: ['css', 'avoid-all'], avoid: ['section', 'article'] }
       };
 
-      html2pdf().set(options).from(contentRef.current).save();
+      await html2pdf().set(options).from(el).save();
     } catch (err) {
       console.error('Error al generar PDF:', err);
       alert('Error al generar el PDF. Intenta de nuevo.');
+    } finally {
+      el.style.maxHeight = originalMaxHeight;
+      el.style.overflowY = originalOverflowY;
     }
   }
 
@@ -169,7 +178,7 @@ export default function ReportPreviewModal({
           </div>
 
           {/* Resumen biográfico */}
-          <section className="mb-6 page-break-inside-avoid">
+          <section className="mb-6 break-inside-avoid">
             <div className="mb-3">
               <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">📋 Resumen Biográfico</h2>
               <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
@@ -212,7 +221,7 @@ export default function ReportPreviewModal({
 
           {/* Informes deportivos */}
           {matchCards.length > 0 && (
-            <section className="mb-6 page-break-inside-avoid">
+            <section className="mb-6 break-inside-avoid">
               <div className="mb-3">
                 <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">⚽ Informes Deportivos por Partido</h2>
                 <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
@@ -280,7 +289,7 @@ export default function ReportPreviewModal({
 
           {/* Gráficos de araña */}
           {groups.length > 0 && (
-            <section className="mb-6 page-break-inside-avoid">
+            <section className="mb-6 break-inside-avoid">
               <div className="mb-3">
                 <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">📊 Análisis de Atributos (Gráficos)</h2>
                 <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>

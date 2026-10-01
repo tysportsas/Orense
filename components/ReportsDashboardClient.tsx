@@ -204,57 +204,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
     }
   }
 
-  // 1. Estadísticas globales (sin filtrar)
-  const totalReports = reports.length;
-
-  const uniquePlayerKeys = useMemo(() => {
-    const keys = new Set<string>();
-    reports.forEach(r => {
-      const k = keyOf(r.data);
-      if (k) keys.add(k);
-    });
-    return keys.size;
-  }, [reports]);
-
-  const ficharCount = useMemo(() => {
-    return reports.filter(r => r.data.valoracion && String(r.data.valoracion).startsWith('5.')).length;
-  }, [reports]);
-
-  const interesanteCount = useMemo(() => {
-    return reports.filter(r => r.data.valoracion && String(r.data.valoracion).startsWith('4.')).length;
-  }, [reports]);
-
-  // Distribución por nivel
-  const levelDistribution = useMemo(() => {
-    const dist: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    reports.forEach(r => {
-      const level = nivel(r.data);
-      if (level) dist[level]++;
-    });
-    return dist;
-  }, [reports]);
-
-  // Distribución por valoración
-  const valDistribution = useMemo(() => {
-    const dist: Record<string, number> = {
-      FICHAR: 0,
-      INTERESANTE: 0,
-      'SEGUIR VIENDO': 0,
-      DESCARTAR: 0,
-      OTRO: 0
-    };
-    reports.forEach(r => {
-      const val = String(r.data.valoracion || '');
-      if (val.includes('FICHAR')) dist.FICHAR++;
-      else if (val.includes('INTERESANTE')) dist.INTERESANTE++;
-      else if (val.includes('SEGUIR VIENDO')) dist['SEGUIR VIENDO']++;
-      else if (val.includes('DESCARTAR')) dist.DESCARTAR++;
-      else dist.OTRO++;
-    });
-    return dist;
-  }, [reports]);
-
-  // 2. Informes filtrados
+  // 1. Informes filtrados (se calculan primero para que los KPIs reflejen el filtro activo)
   const filteredReports = useMemo(() => {
     return reports.filter(r => {
       const d = r.data;
@@ -277,6 +227,58 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
       return true;
     });
   }, [reports, search, selectedObservador, selectedCategoria, selectedNivel, selectedValoracion]);
+
+  const hasActiveFilters = Boolean(search || selectedObservador || selectedCategoria || selectedNivel || selectedValoracion);
+
+  // 2. Estadísticas (reflejan el filtro activo; si no hay filtros, son las globales)
+  const totalReports = filteredReports.length;
+
+  const uniquePlayerKeys = useMemo(() => {
+    const keys = new Set<string>();
+    filteredReports.forEach(r => {
+      const k = keyOf(r.data);
+      if (k) keys.add(k);
+    });
+    return keys.size;
+  }, [filteredReports]);
+
+  const ficharCount = useMemo(() => {
+    return filteredReports.filter(r => r.data.valoracion && String(r.data.valoracion).startsWith('5.')).length;
+  }, [filteredReports]);
+
+  const interesanteCount = useMemo(() => {
+    return filteredReports.filter(r => r.data.valoracion && String(r.data.valoracion).startsWith('4.')).length;
+  }, [filteredReports]);
+
+  // Distribución por nivel
+  const levelDistribution = useMemo(() => {
+    const dist: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    filteredReports.forEach(r => {
+      const level = nivel(r.data);
+      if (level) dist[level]++;
+    });
+    return dist;
+  }, [filteredReports]);
+
+  // Distribución por valoración
+  const valDistribution = useMemo(() => {
+    const dist: Record<string, number> = {
+      FICHAR: 0,
+      INTERESANTE: 0,
+      'SEGUIR VIENDO': 0,
+      DESCARTAR: 0,
+      OTRO: 0
+    };
+    filteredReports.forEach(r => {
+      const val = String(r.data.valoracion || '');
+      if (val.includes('FICHAR')) dist.FICHAR++;
+      else if (val.includes('INTERESANTE')) dist.INTERESANTE++;
+      else if (val.includes('SEGUIR VIENDO')) dist['SEGUIR VIENDO']++;
+      else if (val.includes('DESCARTAR')) dist.DESCARTAR++;
+      else dist.OTRO++;
+    });
+    return dist;
+  }, [filteredReports]);
 
   // Helper de badges para valoración
   const renderValBadge = (val?: string) => {
@@ -320,12 +322,17 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
   return (
     <div className="space-y-6">
       {/* 1. KPIs Header */}
+      {hasActiveFilters && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-xs font-semibold text-amber-800 flex items-center gap-2">
+          🔍 Mostrando estadísticas filtradas ({filteredReports.length} de {reports.length} informes totales)
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Total Informes</p>
             <p className="text-3xl font-bold text-gray-900 mt-1">{totalReports}</p>
-            <p className="text-xs text-gray-500 mt-1">Registrados en la base compartida</p>
+            <p className="text-xs text-gray-500 mt-1">{hasActiveFilters ? 'Con los filtros aplicados' : 'Registrados en la base compartida'}</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-[#0f3a22]/10 text-[#0f3a22] flex items-center justify-center font-bold text-xl">
             📋
@@ -336,7 +343,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Jugadores Únicos</p>
             <p className="text-3xl font-bold text-gray-900 mt-1">{uniquePlayerKeys}</p>
-            <p className="text-xs text-gray-500 mt-1">Con al menos 1 informe</p>
+            <p className="text-xs text-gray-500 mt-1">{hasActiveFilters ? 'Con los filtros aplicados' : 'Con al menos 1 informe'}</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-xl">
             ⚽
@@ -347,7 +354,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Para Fichar</p>
             <p className="text-3xl font-bold text-emerald-700 mt-1">{ficharCount}</p>
-            <p className="text-xs text-emerald-600 mt-1">Valoración 5 · FICHAR</p>
+            <p className="text-xs text-emerald-600 mt-1">Valoración 5 · FICHAR{hasActiveFilters ? ' (filtrado)' : ''}</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xl">
             ⭐
@@ -358,7 +365,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Interesantes</p>
             <p className="text-3xl font-bold text-blue-700 mt-1">{interesanteCount}</p>
-            <p className="text-xs text-blue-600 mt-1">Valoración 4 · INTERESANTE</p>
+            <p className="text-xs text-blue-600 mt-1">Valoración 4 · INTERESANTE{hasActiveFilters ? ' (filtrado)' : ''}</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xl">
             👀
@@ -441,7 +448,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
               📥 Importar datos
             </Link>
           </div>
-          {(search || selectedObservador || selectedCategoria || selectedNivel || selectedValoracion) && (
+          {hasActiveFilters && (
             <button
               onClick={() => {
                 setSearch('');
