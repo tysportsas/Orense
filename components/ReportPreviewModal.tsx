@@ -241,20 +241,22 @@ export default function ReportPreviewModal({
                     <div className="text-xs text-gray-600">
                       {[c.categoria, c.club, c.observador && 'Observador ' + c.observador].filter(Boolean).join(', ')}
                     </div>
-                    <div className="grid grid-cols-3 gap-1 text-xs">
-                      <div className="bg-white rounded px-1 py-0.5 border border-gray-200">
-                        <small className="block text-gray-600 text-xs">Partido</small>
-                        <b className="text-gray-900 text-xs">{c.val_partido || 'Sin dato'}</b>
+                    {c.lv !== 'N5 Institucional' && (
+                      <div className="grid grid-cols-3 gap-1 text-xs">
+                        <div className="bg-white rounded px-1 py-0.5 border border-gray-200">
+                          <small className="block text-gray-600 text-xs">Partido</small>
+                          <b className="text-gray-900 text-xs">{c.val_partido || 'Sin dato'}</b>
+                        </div>
+                        <div className="bg-white rounded px-1 py-0.5 border border-gray-200">
+                          <small className="block text-gray-600 text-xs">Proyección</small>
+                          <b className="text-gray-900 text-xs">{c.val_proy || 'Sin dato'}</b>
+                        </div>
+                        <div className="bg-white rounded px-1 py-0.5 border border-gray-200">
+                          <small className="block text-gray-600 text-xs">Atributos</small>
+                          <b className="text-gray-900 text-xs">{c.avg != null ? `${c.avg.toFixed(1)}/5` : 'Sin dato'}</b>
+                        </div>
                       </div>
-                      <div className="bg-white rounded px-1 py-0.5 border border-gray-200">
-                        <small className="block text-gray-600 text-xs">Proyección</small>
-                        <b className="text-gray-900 text-xs">{c.val_proy || 'Sin dato'}</b>
-                      </div>
-                      <div className="bg-white rounded px-1 py-0.5 border border-gray-200">
-                        <small className="block text-gray-600 text-xs">Atributos</small>
-                        <b className="text-gray-900 text-xs">{c.avg != null ? `${c.avg.toFixed(1)}/5` : 'Sin dato'}</b>
-                      </div>
-                    </div>
+                    )}
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
                       <span className="text-xs text-gray-600">Enlaces</span>
                       {validExternalUrl(c.link1) && (

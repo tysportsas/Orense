@@ -151,20 +151,22 @@ export default function PlayerDashboardClient({
                 <Badge v={c.valoracion} />
               </div>
               <div className="text-sm text-muted">{[c.categoria, c.club, c.observador && 'Observador ' + c.observador].filter(Boolean).join(', ')}</div>
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <div className="bg-surface2 rounded-lg px-2 py-1">
-                  <small className="block text-muted text-xs">Partido</small>
-                  <b>{c.val_partido || 'Sin dato'}</b>
+              {c.lv !== 'N5 Institucional' && (
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div className="bg-surface2 rounded-lg px-2 py-1">
+                    <small className="block text-muted text-xs">Partido</small>
+                    <b>{c.val_partido || 'Sin dato'}</b>
+                  </div>
+                  <div className="bg-surface2 rounded-lg px-2 py-1">
+                    <small className="block text-muted text-xs">Proyección</small>
+                    <b>{c.val_proy || 'Sin dato'}</b>
+                  </div>
+                  <div className="bg-surface2 rounded-lg px-2 py-1">
+                    <small className="block text-muted text-xs">Atributos</small>
+                    <b>{c.avg != null ? `${c.avg.toFixed(1)} de 5` : 'Sin dato'}</b>
+                  </div>
                 </div>
-                <div className="bg-surface2 rounded-lg px-2 py-1">
-                  <small className="block text-muted text-xs">Proyección</small>
-                  <b>{c.val_proy || 'Sin dato'}</b>
-                </div>
-                <div className="bg-surface2 rounded-lg px-2 py-1">
-                  <small className="block text-muted text-xs">Atributos</small>
-                  <b>{c.avg != null ? `${c.avg.toFixed(1)} de 5` : 'Sin dato'}</b>
-                </div>
-              </div>
+              )}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                 <span className="text-xs text-muted">Enlaces</span>
                 {validExternalUrl(c.link1) && (
