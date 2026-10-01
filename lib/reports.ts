@@ -52,12 +52,46 @@ export async function listAllReports(supabase: SupabaseClient): Promise<ReportRo
 }
 
 export async function listPlayers(supabase: SupabaseClient): Promise<PlayerRow[]> {
-  const { data, error } = await supabase
-    .from('players_view')
-    .select('*')
-    .order('last_report_at', { ascending: false });
-  if (error) throw error;
-  return data as PlayerRow[];
+  const reports = await listAllReports(supabase);
+  const players = new Map<string, PlayerRow>();
+
+  for (const r of reports) {
+    const d = r.data;
+    const key = keyOf(d);
+    
+    if (!players.has(key)) {
+      players.set(key, {
+        player_key: key,
+        nombre: d.nombre,
+        categoria: d.categoria || null,
+        club: d.club || null,
+        foto: d.foto || d.foto_url || null,
+        latest_data: d,
+        n_informes: 1,
+        last_report_at: r.created_at
+      });
+    } else {
+      const existing = players.get(key)!;
+      existing.n_informes++;
+      // Conservamos la foto más reciente encontrada (sea archivo o URL)
+      if (!existing.foto && (d.foto || d.foto_url)) {
+        existing.foto = d.foto || d.foto_url;
+      }
+      // Actualizamos datos básicos si este informe es más reciente (reports ya viene ordenado desc,
+      // pero por si acaso mantenemos la lógica de fecha)
+      if (new Date(r.created_at) > new Date(existing.last_report_at)) {
+        existing.last_report_at = r.created_at;
+        existing.nombre = d.nombre;
+        existing.categoria = d.categoria || existing.categoria;
+        existing.club = d.club || existing.club;
+        existing.latest_data = d;
+      }
+    }
+  }
+
+  return Array.from(players.values()).sort((a, b) => 
+    new Date(b.last_report_at).getTime() - new Date(a.last_report_at).getTime()
+  );
 }
 
 export async function listLatestReportsForPlayers(supabase: SupabaseClient): Promise<LatestPlayerReport[]> {
