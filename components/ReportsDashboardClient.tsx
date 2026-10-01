@@ -3,15 +3,57 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import html2pdf from 'html2pdf.js';
 import type { ReportRow } from '@/lib/reports';
-import { keyOf, deleteReport } from '@/lib/reports';
+import { keyOf, deleteReport, getReport, signedPhotoUrl } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
-import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, nivel } from '@/lib/formModel';
+import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, nivel, NACIONALIDADES, ageOf, fmtTs, shortVal, radarAxes, visibleSections, excelSerialDate } from '@/lib/formModel';
+import ReportPreviewModal from './ReportPreviewModal';
 
 interface Props {
   initialReports: ReportRow[];
 }
+
+interface MatchCard {
+  id: string;
+  lv?: string;
+  partido?: string;
+  fpartidoLabel: string;
+  categoria?: string;
+  club?: string;
+  observador?: string;
+  link1?: string;
+  link2?: string;
+  val_partido: string;
+  val_proy: string;
+  valoracion?: string;
+  avg: number | null;
+}
+
+interface Group {
+  id: string;
+  title: string;
+  series: { id: string; label: string; axes: { label: string; value: number; text: string }[]; nivel?: string }[];
+}
+
+interface PreviewData {
+  reportId: string;
+  nombre: string;
+  foto?: string;
+  fotoUrl?: string;
+  base: [string, string][];
+  kpis: [string, string][];
+  matchCards: MatchCard[];
+  groups: Group[];
+}
+
+const RADAR_GROUPS = [
+  { id: 'tec', title: 'Atributos técnicos', secs: ['p_dep_tec', 'f_tec'] },
+  { id: 'tac', title: 'Atributos tácticos', secs: ['p_dep_tac', 'f_tac'] },
+  { id: 'pos', title: 'Atributos del puesto específico', secs: ['p_dep_pos'] },
+  { id: 'fis', title: 'Atributos físicos y condicionales', secs: ['p_esp_fis', 'f_fis'] },
+  { id: 'rend', title: 'Atributos de rendimiento', secs: ['p_esp_rend'] },
+  { id: 'mental', title: 'Atributos psicológicos y mentales', secs: ['p_esp_psi', 'f_men'] }
+];
 
 export default function ReportsDashboardClient({ initialReports }: Props) {
   const router = useRouter();
@@ -22,6 +64,8 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
   const [selectedCategoria, setSelectedCategoria] = useState('');
   const [selectedNivel, setSelectedNivel] = useState('');
   const [selectedValoracion, setSelectedValoracion] = useState('');
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   async function handleDelete(id: string, nombre: string) {
     const confirmed = window.confirm(`¿Eliminar el informe de "${nombre}"? Esta acción no se puede deshacer.`);
@@ -39,42 +83,124 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
     }
   }
 
-  async function handleDownloadPDF(reportId: string, playerName: string) {
+  async function handleOpenPreview(reportId: string) {
+    setIsLoadingPreview(true);
     try {
-      // Crear contenedor temporal para el PDF
-      const element = document.createElement('div');
-      element.style.padding = '20px';
-      element.style.fontFamily = 'Arial, sans-serif';
-      element.innerHTML = `
-        <div style="margin-bottom: 20px; border-bottom: 2px solid #0f3a22; padding-bottom: 10px;">
-          <h1 style="margin: 0 0 10px 0; color: #0f3a22;">Informe de Scouting</h1>
-          <p style="margin: 0; color: #666; font-size: 14px;">Generado: ${new Date().toLocaleDateString('es-ES')}</p>
-        </div>
-        <div style="margin-bottom: 20px;">
-          <h2 style="color: #0f3a22; margin-bottom: 10px;">Información del Jugador</h2>
-          <p style="margin: 5px 0;"><strong>Nombre:</strong> ${playerName}</p>
-          <p style="margin: 5px 0;"><strong>ID del Informe:</strong> ${reportId}</p>
-          <p style="margin: 5px 0;"><strong>Fecha de Descarga:</strong> ${new Date().toLocaleString('es-ES')}</p>
-        </div>
-        <div style="background-color: #f0f0f0; padding: 15px; border-radius: 8px;">
-          <p style="margin: 0; color: #666; font-size: 12px;">
-            Para ver el informe completo y editarlo, acceda a la plataforma Orense.
-          </p>
-        </div>
-      `;
+      const supabase = createClient();
+      const report = await getReport(supabase, reportId);
+      if (!report) throw new Error('Informe no encontrado');
 
-      const options = {
-        margin: 10,
-        filename: `informe-${playerName.replace(/\s+/g, '_')}-${reportId.slice(0, 8)}.pdf`,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' as const }
-      };
+      const d = report.data;
+      const pKey = keyOf(d);
+      
+      // Obtener todos los informes del jugador para calcular gráficos
+      const playerReports = reports.filter(r => keyOf(r.data) === pKey);
+      
+      // Construir base
+      const base: [string, string][] = [];
+      if (d.fnac) base.push(['Fecha de nacimiento', `${fmtDate(d.fnac)} (${ageOf(d.fnac)} años)`]);
+      const natl = NACIONALIDADES.find((n) => n.v === d.nacionalidad);
+      if (natl) base.push(['Nacionalidad', natl.l]);
+      if (d.lugar_nac) base.push(['Lugar de nacimiento', d.lugar_nac]);
+      if (d.altura) base.push(['Altura', d.altura]);
+      if (d.lateralidad) base.push(['Lateralidad', d.lateralidad]);
 
-      html2pdf().set(options).from(element).save();
+      // Construir KPIs
+      const levels = [...new Set(playerReports.map((r) => nivel(r.data)).filter(Boolean))].sort();
+      const matches = new Set(playerReports.map((r) => (r.data.partido || '') + '|' + (r.data.fpartido || ''))).size;
+      const cur = playerReports.find((r) => r.data.valoracion);
+      
+      const kpis: [string, string][] = [
+        [String(playerReports.length), playerReports.length === 1 ? 'Informe' : 'Informes'],
+        [String(matches), matches === 1 ? 'Partido observado' : 'Partidos observados'],
+        [levels.length ? 'N' + Math.max(...levels) : '', 'Nivel más alto'],
+        [cur?.data.valoracion ?? '', 'Valoración actual']
+      ];
+
+      // Construir matchCards
+      const ordered = [...playerReports].sort((a, b) => nivel(a.data) - nivel(b.data) || +new Date(a.created_at) - +new Date(b.created_at));
+      const matchCards = ordered
+        .slice()
+        .reverse()
+        .map((r) => {
+          const rdata = r.data;
+          const lv = LEVELS[nivel(rdata) - 1];
+          let sum = 0, n = 0;
+          for (const sec of visibleSections(rdata)) {
+            for (const f of sec.fields(rdata)) {
+              if (f.type === 'rate' && !f.values && typeof rdata[f.id!] === 'number') {
+                sum += rdata[f.id!];
+                n++;
+              }
+            }
+          }
+          const serialDate = excelSerialDate(rdata.partido);
+          return {
+            id: r.id,
+            lv: lv?.short,
+            partido: serialDate ? 'Partido registrado' : rdata.partido,
+            fpartido: rdata.fpartido || serialDate,
+            categoria: rdata.categoria,
+            club: rdata.club,
+            observador: rdata.observador,
+            link1: rdata.link1,
+            link2: rdata.link2,
+            val_partido: rdata.val_partido,
+            val_proy: rdata.val_proy,
+            valoracion: rdata.valoracion,
+            avg: n ? sum / n : null
+          };
+        });
+
+      const matchCardsFormatted: MatchCard[] = matchCards.map((c) => ({
+        ...c,
+        fpartidoLabel: c.fpartido ? fmtDate(c.fpartido) : 'Sin fecha',
+        val_partido: c.val_partido ? shortVal(c.val_partido) : '',
+        val_proy: c.val_proy ? shortVal(c.val_proy) : ''
+      }));
+
+      // Construir grupos de radar
+      const groups = RADAR_GROUPS.map((g) => {
+        const series = [...playerReports]
+          .sort((a, b) => (b.data.fpartido || '').localeCompare(a.data.fpartido || ''))
+          .map((r) => {
+            const sec = visibleSections(r.data).find((x) => g.secs.includes(x.id));
+            const axes = sec ? radarAxes(sec, r.data) : null;
+            return axes ? { report: r, axes } : null;
+          })
+          .filter(Boolean) as { report: (typeof playerReports)[number]; axes: { label: string; value: number; text: string }[] }[];
+        
+        return {
+          ...g,
+          series: series.map((s) => {
+            const serialDate = excelSerialDate(s.report.data.partido);
+            const date = s.report.data.fpartido || serialDate;
+            const match = serialDate ? 'Partido registrado' : s.report.data.partido || '';
+            return {
+              id: s.report.id,
+              label: `${date ? fmtDate(date) : 'Sin fecha'}, ${match}`,
+              axes: s.axes,
+              nivel: LEVELS[nivel(s.report.data) - 1]?.short
+            };
+          })
+        };
+      });
+
+      setPreviewData({
+        reportId,
+        nombre: d.nombre || 'Jugador',
+        foto: d.foto,
+        fotoUrl: d.foto_url,
+        base,
+        kpis,
+        matchCards: matchCardsFormatted,
+        groups
+      });
     } catch (err) {
-      console.error('Error al generar PDF:', err);
-      alert('Error al generar el PDF. Intenta de nuevo.');
+      console.error('Error al cargar vista previa:', err);
+      alert('Error al cargar el informe. Intenta de nuevo.');
+    } finally {
+      setIsLoadingPreview(false);
     }
   }
 
@@ -474,11 +600,12 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
                           Editar / Ver
                         </Link>
                         <button
-                          onClick={() => handleDownloadPDF(r.id, d.nombre || 'jugador')}
-                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors"
-                          title="Descargar informe como PDF"
+                          onClick={() => handleOpenPreview(r.id)}
+                          disabled={isLoadingPreview}
+                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors disabled:opacity-50"
+                          title="Ver vista previa del informe"
                         >
-                          📥 PDF
+                          {isLoadingPreview ? '⏳' : '📥'} PDF
                         </button>
                         <Link
                           href={`/players/${encodeURIComponent(pKey)}`}
@@ -509,6 +636,22 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
           </div>
         )}
       </div>
+
+      {/* Modal de Vista Previa */}
+      {previewData && (
+        <ReportPreviewModal
+          isOpen={previewData !== null}
+          onClose={() => setPreviewData(null)}
+          reportId={previewData.reportId}
+          nombre={previewData.nombre}
+          foto={previewData.foto}
+          fotoUrl={previewData.fotoUrl}
+          base={previewData.base}
+          kpis={previewData.kpis}
+          matchCards={previewData.matchCards}
+          groups={previewData.groups}
+        />
+      )}
     </div>
   );
 }
