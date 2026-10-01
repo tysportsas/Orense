@@ -52,12 +52,14 @@ export default function CampogramaClient({ initialReports }: Props) {
       }
 
       const rawVal = d.valoracion || '';
-      let score = '—';
-      if (rawVal.includes('5.') || rawVal.includes('FICHAR')) score = '5';
-      else if (rawVal.includes('4.') || rawVal.includes('INTERESANTE')) score = '4';
-      else if (rawVal.includes('3.') || rawVal.includes('SEGUIR VIENDO')) score = '3';
-      else if (rawVal.includes('2.') || rawVal.includes('DESCARTAR')) score = '2';
-      else if (rawVal.includes('1.') || rawVal.includes('SIN VER')) score = '1';
+      let scoreNum = 0;
+      if (rawVal.includes('5.') || rawVal.includes('FICHAR')) scoreNum = 5;
+      else if (rawVal.includes('4.') || rawVal.includes('INTERESANTE')) scoreNum = 4;
+      else if (rawVal.includes('3.') || rawVal.includes('SEGUIR VIENDO')) scoreNum = 3;
+      else if (rawVal.includes('2.') || rawVal.includes('DESCARTAR')) scoreNum = 2;
+      else if (rawVal.includes('1.') || rawVal.includes('SIN VER')) scoreNum = 1;
+      
+      let score = scoreNum > 0 ? String(scoreNum) : '—';
 
       if (!map.has(key)) {
         map.set(key, {
@@ -76,14 +78,19 @@ export default function CampogramaClient({ initialReports }: Props) {
         });
       } else {
         const existing = map.get(key)!;
+        
+        // Mantenemos siempre la valoración más alta que tenga el jugador en cualquier informe
+        const existingScoreNum = parseInt(existing.valScore) || 0;
+        if (scoreNum > existingScoreNum) {
+          existing.valoracion = d.valoracion;
+          existing.valScore = score;
+        }
+
+        // El resto de datos (club, foto, puesto) se actualizan con el informe más reciente
         if (new Date(r.created_at) > new Date(existing.lastReportAt)) {
           existing.lastReportAt = r.created_at;
           existing.nombre = cleanNombre;
           if (d.puesto) existing.puesto = d.puesto.toUpperCase();
-          if (d.valoracion) {
-            existing.valoracion = d.valoracion;
-            existing.valScore = score;
-          }
           if (d.club) existing.club = d.club;
           if (d.categoria) existing.categoria = d.categoria;
           if (d.lateralidad) existing.lateralidad = d.lateralidad;
