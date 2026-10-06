@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 
 const MAX_CSV_BYTES = 5 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
@@ -17,11 +16,6 @@ function isAllowedGoogleUrl(url: URL): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Debes iniciar sesión para importar.' }, { status: 401 });
-    }
 
     const contentLength = Number(req.headers.get('content-length') || 0);
     if (contentLength > 2048) {
