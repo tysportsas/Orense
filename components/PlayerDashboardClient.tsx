@@ -233,7 +233,7 @@ export default function PlayerDashboardClient({
 
       <section>
         <h2 className="font-display font-bold text-2xl border-b-2 border-gold pb-1 mb-4">
-          Informe deportivo: gráficos de araña
+          Informe Deportivo
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
           {groups.map((g) => {
