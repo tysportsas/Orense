@@ -10,7 +10,8 @@ import {
   bulkInsertReports,
   generateSampleCSV,
   generateSampleJSON,
-  type ParsedImportRow
+  type ParsedImportRow,
+  type BulkImportResult
 } from '@/lib/importExport';
 
 export default function ImportReportsClient() {
@@ -24,7 +25,7 @@ export default function ImportReportsClient() {
   const [parsedRows, setParsedRows] = useState<ParsedImportRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
-  const [result, setResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+  const [result, setResult] = useState<BulkImportResult | null>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -133,7 +134,7 @@ export default function ImportReportsClient() {
     setResult(res);
     setImporting(false);
 
-    if (res.success > 0) {
+    if (res.success + res.updated > 0) {
       router.refresh();
     }
   }
@@ -302,7 +303,7 @@ export default function ImportReportsClient() {
               }`}
             >
               <p className="font-bold text-sm">
-                ✅ Importación completada: {result.success} informe(s) insertados con éxito.
+                ✅ Importación completada: {result.success} nuevo(s), {result.updated} actualizado(s), {result.skipped} omitido(s) por ya existir.
               </p>
               {result.failed > 0 && (
                 <div className="mt-2 text-xs space-y-1">

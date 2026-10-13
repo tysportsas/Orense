@@ -4,8 +4,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
-import { canonicalReportFieldKey, excelSerialDate, normalizeReportData, type ReportData } from './formModel';
-import { createReport } from './reports';
+import { canonicalReportFieldKey, excelSerialDate, normalizeReportData, norm, type ReportData } from './formModel';
+import { createReport, listAllReports, updateReport, type ReportRow } from './reports';
 
 export interface ParsedImportRow {
   data: ReportData;
@@ -116,7 +116,7 @@ export function mapHeaderToFieldKey(rawHeader: string): string {
     return 'fnac';
   }
 
-  if (clean.includes('fecha_del_partido') || clean.includes('fecha_partido') || clean === 'fpartido') {
+  if (/^fecha_(?:de_|del_)?partido/.test(clean) || clean === 'fpartido') {
     return 'fpartido';
   }
 
@@ -177,78 +177,81 @@ export function mapHeaderToFieldKey(rawHeader: string): string {
 
 /** Procesa el contenido de un archivo CSV (soporta comas o punto y coma como delimitador) */
 export function parseCSV(text: string): ParsedImportRow[] {
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+  const records = parseCSVRecords(text.replace(/^\uFEFF/, ''));
+  if (records.length < 2) return [];
 
-  if (lines.length < 2) {
-    return [];
-  }
-
-  // Detectar delimitador (coma o punto y coma)
-  const firstLine = lines[0];
-  const delimiter = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ',';
-
-  // Extraer encabezados mapeándolos de forma inteligente
-  const mappedHeaders = splitCSVLine(lines[0], delimiter).map((h) => mapHeaderToFieldKey(h));
-
+  const mappedHeaders = records[0].map((h) => mapHeaderToFieldKey(h.replace(/\s+/g, ' ').trim()));
   const results: ParsedImportRow[] = [];
 
-  for (let i = 1; i < lines.length; i++) {
-    const values = splitCSVLine(lines[i], delimiter).map((v) => v.trim().replace(/^["']|["']$/g, ''));
-    if (values.every((v) => !v)) continue;
+  for (const values of records.slice(1)) {
+    if (values.every((v) => !v.trim())) continue;
 
     const rowData: ReportData = {};
     mappedHeaders.forEach((key, idx) => {
       if (values[idx] !== undefined) setImportedValue(rowData, key, values[idx]);
     });
 
-    // Default para observador si no vino especificado
     if (!rowData.observador) {
       rowData.observador = 'SECRETARÍA TÉCNICA';
     }
 
-    // Default para tipo de informe si no vino especificado
     if (!rowData.tipo_informe) {
       rowData.tipo_informe = 'INFORME GENERAL DESCRIPTIVO – RECIÉN CONOCIDO – PRIMER INFORME';
     }
 
-    // Validar requeridos básicos
     let error: string | undefined;
     if (!rowData.nombre) {
       error = 'Falta el nombre del jugador';
     }
 
-    results.push({
-      data: rowData,
-      isValid: !error,
-      error
-    });
+    results.push({ data: rowData, isValid: !error, error });
   }
 
   return results;
 }
 
-/** Divide una línea de CSV respetando comillas */
-function splitCSVLine(line: string, delimiter: string): string[] {
-  const result: string[] = [];
-  let current = '';
+/** Lee registros CSV completos: respeta comillas dobles, comillas escapadas y saltos de línea dentro de una celda. */
+function parseCSVRecords(text: string): string[][] {
+  const firstLineEnd = text.search(/\r?\n/);
+  const firstLine = firstLineEnd < 0 ? text : text.slice(0, firstLineEnd);
+  const delimiter = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ',';
+
+  const records: string[][] = [];
+  let row: string[] = [];
+  let field = '';
   let inQuotes = false;
 
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '"' || char === "'") {
-      inQuotes = !inQuotes;
-    } else if (char === delimiter && !inQuotes) {
-      result.push(current);
-      current = '';
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (inQuotes) {
+      if (char === '"' && text[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === delimiter) {
+      row.push(field);
+      field = '';
+    } else if (char === '\n' || char === '\r') {
+      if (char === '\r' && text[i + 1] === '\n') i++;
+      row.push(field);
+      records.push(row);
+      row = [];
+      field = '';
     } else {
-      current += char;
+      field += char;
     }
   }
-  result.push(current);
-  return result;
+  if (field || row.length > 0) {
+    row.push(field);
+    records.push(row);
+  }
+  return records;
 }
 
 /** Procesa el contenido de un archivo de Excel (.xlsx, .xls) a partir de su ArrayBuffer */
@@ -334,41 +337,119 @@ export function parseJSON(text: string): ParsedImportRow[] {
   }
 }
 
-/** Inserta una lista de informes en Supabase en bloques (batch) */
+export interface BulkImportResult {
+  success: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  errors: string[];
+}
+
+const isBlank = (value: unknown) => value == null || String(value).trim() === '';
+
+function importIdentity(data: ReportData): string {
+  return [norm(data.nombre || ''), data.fnac || '', norm(data.partido || ''), data.fpartido || ''].join('|');
+}
+
+/** Completa solo los campos vacíos del informe existente con los datos importados. */
+function fillMissingFields(existing: ReportData, incoming: ReportData): ReportData | null {
+  const merged = { ...existing };
+  let changed = false;
+  for (const [key, value] of Object.entries(incoming)) {
+    if (!isBlank(value) && isBlank(merged[key])) {
+      merged[key] = value;
+      changed = true;
+    }
+  }
+  return changed ? merged : null;
+}
+
+/**
+ * Importa informes sin duplicar: si ya existe uno con el mismo jugador, fecha de
+ * nacimiento y partido, solo completa sus campos vacíos; si no, lo inserta.
+ */
 export async function bulkInsertReports(
   supabase: SupabaseClient,
   items: ReportData[],
   onProgress?: (current: number, total: number) => void
-): Promise<{ success: number; failed: number; errors: string[] }> {
-  let success = 0;
-  let failed = 0;
-  const errors: string[] = [];
+): Promise<BulkImportResult> {
+  const result: BulkImportResult = { success: 0, updated: 0, skipped: 0, failed: 0, errors: [] };
+
+  const existingByIdentity = new Map<string, ReportRow>();
+  const existingByPlayerMatch = new Map<string, ReportRow[]>();
+  try {
+    for (const report of await listAllReports(supabase)) {
+      existingByIdentity.set(importIdentity(report.data), report);
+      const looseKey = `${norm(report.data.nombre || '')}|${report.data.fnac || ''}|${norm(report.data.partido || '')}`;
+      existingByPlayerMatch.set(looseKey, [...(existingByPlayerMatch.get(looseKey) ?? []), report]);
+    }
+  } catch (error: any) {
+    return {
+      ...result,
+      failed: items.length,
+      errors: [`No se pudieron leer los informes existentes; no se importó nada para evitar duplicados: ${error.message || 'Error desconocido'}`]
+    };
+  }
+
+  const toInsert: ReportData[] = [];
+  const seenInFile = new Set<string>();
+  let processed = 0;
+
+  for (const raw of items) {
+    const item = normalizeReportData(raw);
+    const identity = importIdentity(item);
+    processed++;
+
+    if (seenInFile.has(identity)) {
+      result.skipped++;
+      continue;
+    }
+    seenInFile.add(identity);
+
+    const looseKey = `${norm(item.nombre || '')}|${item.fnac || ''}|${norm(item.partido || '')}`;
+    const existing = existingByIdentity.get(identity) ?? (existingByPlayerMatch.get(looseKey)?.length === 1 ? existingByPlayerMatch.get(looseKey)![0] : undefined);
+
+    if (!existing) {
+      toInsert.push(item);
+      continue;
+    }
+
+    const merged = fillMissingFields(existing.data, item);
+    if (!merged) {
+      result.skipped++;
+      continue;
+    }
+    try {
+      await updateReport(supabase, existing.id, merged);
+      result.updated++;
+    } catch (error: any) {
+      result.failed++;
+      result.errors.push(`Error al actualizar a ${item.nombre || 'registro'}: ${error.message || 'Error desconocido'}`);
+    }
+    onProgress?.(processed, items.length);
+  }
 
   const batchSize = 100;
-  for (let start = 0; start < items.length; start += batchSize) {
-    const batch = items.slice(start, start + batchSize);
-    const { error } = await supabase
-      .from('reports')
-      .insert(batch.map((data) => ({ data: normalizeReportData(data), created_by: null })));
-
+  for (let start = 0; start < toInsert.length; start += batchSize) {
+    const batch = toInsert.slice(start, start + batchSize);
+    const { error } = await supabase.from('reports').insert(batch.map((data) => ({ data, created_by: null })));
     if (!error) {
-      success += batch.length;
+      result.success += batch.length;
     } else {
       for (const item of batch) {
         try {
-          await createReport(supabase, normalizeReportData(item));
-          success++;
+          await createReport(supabase, item);
+          result.success++;
         } catch (itemError: any) {
-          failed++;
-          errors.push(`Error al insertar a ${item.nombre || 'registro'}: ${itemError.message || 'Error desconocido'}`);
+          result.failed++;
+          result.errors.push(`Error al insertar a ${item.nombre || 'registro'}: ${itemError.message || 'Error desconocido'}`);
         }
       }
     }
-
-    onProgress?.(Math.min(start + batch.length, items.length), items.length);
+    onProgress?.(Math.min(items.length, processed), items.length);
   }
 
-  return { success, failed, errors };
+  return result;
 }
 
 /** Genera el contenido de la plantilla de ejemplo en formato CSV */

@@ -118,6 +118,26 @@ export function excelSerialDate(value: unknown): string | null {
   }
 
   const raw = String(value ?? '').trim();
+
+  const isoLike = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T\s].*)?$/);
+  const dayFirst = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})(?:\s.*)?$/);
+  let parts: [number, number, number] | null = null;
+  if (isoLike) {
+    parts = [Number(isoLike[1]), Number(isoLike[2]), Number(isoLike[3])];
+  } else if (dayFirst) {
+    const first = Number(dayFirst[1]);
+    const second = Number(dayFirst[2]);
+    // Formato latino dd/mm/aaaa; solo se invierte si el segundo valor no puede ser mes.
+    const [day, month] = second > 12 && first <= 12 ? [second, first] : [first, second];
+    parts = [Number(dayFirst[3]), month, day];
+  }
+  if (parts) {
+    const [year, month, day] = parts;
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+    return date.toISOString().slice(0, 10);
+  }
+
   if (!/^\d+(?:\.\d+)?$/.test(raw)) return null;
 
   const serial = Number(raw);
