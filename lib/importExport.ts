@@ -375,11 +375,9 @@ export async function bulkInsertReports(
 ): Promise<BulkImportResult> {
   const result: BulkImportResult = { success: 0, updated: 0, skipped: 0, failed: 0, errors: [] };
 
-  const existingByIdentity = new Map<string, ReportRow>();
   const existingByPlayerMatch = new Map<string, ReportRow[]>();
   try {
     for (const report of await listAllReports(supabase)) {
-      existingByIdentity.set(importIdentity(report.data), report);
       const looseKey = `${norm(report.data.nombre || '')}|${report.data.fnac || ''}|${norm(report.data.partido || '')}`;
       existingByPlayerMatch.set(looseKey, [...(existingByPlayerMatch.get(looseKey) ?? []), report]);
     }
@@ -407,25 +405,28 @@ export async function bulkInsertReports(
     seenInFile.add(identity);
 
     const looseKey = `${norm(item.nombre || '')}|${item.fnac || ''}|${norm(item.partido || '')}`;
-    const existing = existingByIdentity.get(identity) ?? (existingByPlayerMatch.get(looseKey)?.length === 1 ? existingByPlayerMatch.get(looseKey)![0] : undefined);
+    const candidates = existingByPlayerMatch.get(looseKey) ?? [];
 
-    if (!existing) {
+    if (candidates.length === 0) {
       toInsert.push(item);
       continue;
     }
 
-    const merged = fillMissingFields(existing.data, item);
-    if (!merged) {
-      result.skipped++;
-      continue;
+    // Si ya hay varios informes iguales en la base, se completan todos en lugar de crear otro.
+    let touched = false;
+    for (const existing of candidates) {
+      const merged = fillMissingFields(existing.data, item);
+      if (!merged) continue;
+      touched = true;
+      try {
+        await updateReport(supabase, existing.id, merged);
+        result.updated++;
+      } catch (error: any) {
+        result.failed++;
+        result.errors.push(`Error al actualizar a ${item.nombre || 'registro'}: ${error.message || 'Error desconocido'}`);
+      }
     }
-    try {
-      await updateReport(supabase, existing.id, merged);
-      result.updated++;
-    } catch (error: any) {
-      result.failed++;
-      result.errors.push(`Error al actualizar a ${item.nombre || 'registro'}: ${error.message || 'Error desconocido'}`);
-    }
+    if (!touched) result.skipped++;
     onProgress?.(processed, items.length);
   }
 
