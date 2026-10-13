@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { listReportsForPlayer } from '@/lib/reports';
+import { listReportsForPlayer, playerPhotoFrom } from '@/lib/reports';
 import { LEVELS, NACIONALIDADES, nivel, ageOf, fmtDate, fmtTs, shortVal, radarAxes, visibleSections, excelSerialDate } from '@/lib/formModel';
 import Header from '@/components/Header';
 import PlayerDashboardClient from '@/components/PlayerDashboardClient';
@@ -40,6 +40,7 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
     }
     return acc;
   }, {});
+  const playerPhoto = playerPhotoFrom(reports, prof);
   const natl = NACIONALIDADES.find((n) => n.v === prof.nacionalidad);
   const levels = [...new Set(ordered.map((r) => nivel(r.data)).filter(Boolean))].sort();
   const cur = byTime.find((r) => r.data.valoracion);
@@ -75,8 +76,8 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
       <Header email={user?.email ?? ''} role={role} />
       <PlayerDashboardClient
         nombre={prof.nombre || 'Jugador'}
-        foto={prof.foto}
-        fotoUrl={prof.foto_url}
+        foto={playerPhoto.foto}
+        fotoUrl={playerPhoto.foto_url}
         puesto={prof.puesto}
         lateralidad={prof.lateralidad}
         puestoReportId={prof.puestoReportId}

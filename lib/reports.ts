@@ -193,6 +193,20 @@ export async function signedAttachmentUrl(supabase: SupabaseClient, path: string
   return data.signedUrl;
 }
 
+/** Foto más reciente registrada para un jugador en cualquiera de sus informes (mismo nombre y fecha de nacimiento; si no, solo el nombre). */
+export function playerPhotoFrom(reports: ReportRow[], data: ReportData): { foto?: string; foto_url?: string } {
+  const withPhoto = reports
+    .filter((r) => r.data.foto || r.data.foto_url)
+    .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+  const key = keyOf(data);
+  const name = norm(data.nombre || '');
+  const match =
+    withPhoto.find((r) => keyOf(r.data) === key) ??
+    (name ? withPhoto.find((r) => norm(r.data.nombre || '') === name) : undefined);
+  if (!match) return {};
+  return match.data.foto ? { foto: match.data.foto } : { foto_url: match.data.foto_url };
+}
+
 export function keyOf(d: ReportData): string {
   return norm(d.nombre || '') + '|' + (d.fnac || '');
 }
@@ -219,6 +233,9 @@ export async function getObservedPlayersOptions(supabase: SupabaseClient): Promi
     const existing = players.get(key);
     if (existing) {
       existing.n_informes += 1;
+      if (!existing.latestData.foto && !existing.latestData.foto_url && (data.foto || data.foto_url)) {
+        existing.latestData = { ...existing.latestData, foto: data.foto, foto_url: data.foto_url };
+      }
       continue;
     }
 

@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ReportRow } from '@/lib/reports';
-import { keyOf, deleteReport, getReport, signedPhotoUrl, listReportsForPlayer } from '@/lib/reports';
+import { keyOf, deleteReport, getReport, signedPhotoUrl, listReportsForPlayer, playerPhotoFrom } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
 import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, nivel, NACIONALIDADES, ageOf, fmtTs, shortVal, radarAxes, visibleSections, excelSerialDate } from '@/lib/formModel';
 import ReportPreviewModal from './ReportPreviewModal';
@@ -102,6 +102,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
       // posición u otros datos se guardaron desde otra pantalla).
       const playerReports = await listReportsForPlayer(supabase, pKey);
       const byTime = [...playerReports].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+      const playerPhoto = playerPhotoFrom(playerReports, d);
       const puesto = byTime.find(r => r.data.puesto)?.data.puesto;
       const lateralidadProf = byTime.find(r => r.data.lateralidad)?.data.lateralidad;
       const posReport = byTime.find(r => typeof r.data.pos_x === 'number' && typeof r.data.pos_y === 'number');
@@ -201,8 +202,8 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
       setPreviewData({
         reportId,
         nombre: d.nombre || 'Jugador',
-        foto: d.foto,
-        fotoUrl: d.foto_url,
+        foto: playerPhoto.foto,
+        fotoUrl: playerPhoto.foto_url,
         puesto,
         lateralidad: lateralidadProf,
         posX,

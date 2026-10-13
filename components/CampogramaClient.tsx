@@ -78,6 +78,10 @@ export default function CampogramaClient({ initialReports }: Props) {
         });
       } else {
         const existing = map.get(key)!;
+        if (!existing.foto && !existing.fotoUrl) {
+          existing.foto = d.foto;
+          existing.fotoUrl = d.foto_url;
+        }
         
         // Mantenemos siempre la valoración más alta que tenga el jugador en cualquier informe
         const existingScoreNum = parseInt(existing.valScore) || 0;
