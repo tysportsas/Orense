@@ -233,6 +233,10 @@ export default function ReportPreviewModal({
       await waitForImages(el);
 
       el.scrollTop = 0;
+      // Solo para el PDF: radar comparativo compacto para que el bloque quepa en la hoja 1.
+      const cmp = Array.from(el.querySelectorAll<HTMLElement>('.cmp-radar'));
+      const prevMax = cmp.map((n) => n.style.maxWidth);
+      cmp.forEach((n) => (n.style.maxWidth = '250px'));
       const base = el.getBoundingClientRect().top;
       const width = el.scrollWidth;
       // Zonas que no deben partirse entre páginas (en píxeles CSS relativos al contenido).
@@ -290,11 +294,13 @@ export default function ReportPreviewModal({
         pdf.addImage(slice.toDataURL('image/jpeg', 0.95), 'JPEG', mx, my, pageW - 2 * mx, (sliceH / scale) * mmPerPx, undefined, 'FAST');
         y = end;
       }
+      cmp.forEach((n, i) => (n.style.maxWidth = prevMax[i]));
       pdf.save(`informe-${nombre.replace(/\s+/g, '_')}-${reportId.slice(0, 8)}.pdf`);
     } catch (err) {
       console.error('Error al generar PDF:', err);
       alert('Error al generar el PDF. Intenta de nuevo.');
     } finally {
+      el.querySelectorAll<HTMLElement>('.cmp-radar').forEach((n) => (n.style.maxWidth = ''));
       el.style.maxHeight = originalMaxHeight;
       el.style.overflowY = originalOverflowY;
     }
@@ -404,7 +410,7 @@ export default function ReportPreviewModal({
                 <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">📊 Comparativo de informes</h2>
                 <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
               </div>
-              <div className="pdf-avoid [&_.cmp-radar]:max-w-[330px] [&_.cmp-radar]:mx-auto">
+              <div className="pdf-avoid [&_.cmp-radar]:max-w-[440px] [&_.cmp-radar]:mx-auto">
                 <RatingsAverageChart cards={matchCards} groups={groups} />
               </div>
             </section>
