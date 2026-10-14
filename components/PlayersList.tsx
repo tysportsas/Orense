@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { signedPhotoUrl, type PlayerRow } from '@/lib/reports';
+import { deleteReport, signedPhotoUrl, type PlayerRow } from '@/lib/reports';
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -40,11 +40,35 @@ function Avatar({ nombre, foto }: { nombre: string; foto: string | null }) {
 
 export default function PlayersList({ initialPlayers }: { initialPlayers: PlayerRow[] }) {
   const [q, setQ] = useState('');
+  const [players, setPlayers] = useState(initialPlayers);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function remove(playerKey: string, id: string) {
+    if (!window.confirm('¿Borrar este informe? Esta acción no se puede deshacer.')) return;
+    setBusy(id);
+    try {
+      await deleteReport(createClient(), id);
+      setPlayers((prev) =>
+        prev
+          .map((p) => {
+            if (p.player_key !== playerKey) return p;
+            const reports = p.reports.filter((r) => r.id !== id);
+            return { ...p, reports, n_informes: reports.length };
+          })
+          .filter((p) => p.n_informes > 0)
+      );
+    } catch (e) {
+      window.alert('No se pudo borrar: ' + (e instanceof Error ? e.message : 'error desconocido'));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const filtered = useMemo(() => {
     const n = q.trim().toLowerCase();
-    if (!n) return initialPlayers;
-    return initialPlayers.filter((p) => p.nombre?.toLowerCase().includes(n) || p.club?.toLowerCase().includes(n));
-  }, [q, initialPlayers]);
+    if (!n) return players;
+    return players.filter((p) => p.nombre?.toLowerCase().includes(n) || p.club?.toLowerCase().includes(n));
+  }, [q, players]);
 
   return (
     <div>
@@ -57,7 +81,7 @@ export default function PlayersList({ initialPlayers }: { initialPlayers: Player
 
       {filtered.length === 0 && (
         <div className="border border-dashed border-line rounded-2xl p-10 text-center text-muted">
-          {initialPlayers.length === 0 ? (
+          {players.length === 0 ? (
             <>
               <h3 className="font-display font-bold text-2xl text-ink mb-1">Todavía no hay informes</h3>
               <p className="mb-4">Cuando registres el primero, aparecerá aquí para todo el equipo.</p>
@@ -98,6 +122,33 @@ export default function PlayersList({ initialPlayers }: { initialPlayers: Player
               >
                 Nuevo informe
               </Link>
+            </div>
+            <div className="basis-full flex flex-wrap gap-2 pt-2 border-t border-line">
+              {p.reports.map((r, i) => (
+                <span
+                  key={r.id}
+                  className="inline-flex items-center rounded-full border border-line bg-surface2 text-sm overflow-hidden"
+                >
+                  <Link
+                    href={`/reports/${r.id}/edit`}
+                    title={r.partido || 'Editar informe'}
+                    className="px-3 py-1 font-semibold hover:bg-line/40"
+                  >
+                    Informe {p.reports.length - i}
+                    {r.fpartido ? ` · ${fmtDate(r.fpartido + 'T12:00:00')}` : ''}
+                  </Link>
+                  <button
+                    type="button"
+                    disabled={busy === r.id}
+                    onClick={() => remove(p.player_key, r.id)}
+                    title="Borrar informe"
+                    aria-label="Borrar informe"
+                    className="px-2 py-1 text-red-700 border-l border-line hover:bg-red-50 disabled:opacity-50"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
             </div>
           </article>
         ))}

@@ -26,6 +26,14 @@ export interface PlayerRow {
   n_informes: number;
   last_report_at: string;
   latest_data?: ReportData;
+  reports: PlayerReportSummary[];
+}
+
+export interface PlayerReportSummary {
+  id: string;
+  created_at: string;
+  partido: string;
+  fpartido: string;
 }
 
 export interface LatestPlayerReport {
@@ -51,6 +59,15 @@ export async function listAllReports(supabase: SupabaseClient): Promise<ReportRo
   }
 }
 
+function summaryOf(r: ReportRow): PlayerReportSummary {
+  return {
+    id: r.id,
+    created_at: r.created_at,
+    partido: String(r.data.partido ?? ''),
+    fpartido: String(r.data.fpartido ?? '')
+  };
+}
+
 export async function listPlayers(supabase: SupabaseClient): Promise<PlayerRow[]> {
   const reports = await listAllReports(supabase);
   const players = new Map<string, PlayerRow>();
@@ -68,11 +85,13 @@ export async function listPlayers(supabase: SupabaseClient): Promise<PlayerRow[]
         foto: d.foto || d.foto_url || null,
         latest_data: d,
         n_informes: 1,
-        last_report_at: r.created_at
+        last_report_at: r.created_at,
+        reports: [summaryOf(r)]
       });
     } else {
       const existing = players.get(key)!;
       existing.n_informes++;
+      existing.reports.push(summaryOf(r));
       // Conservamos la foto más reciente encontrada (sea archivo o URL)
       if (!existing.foto && (d.foto || d.foto_url)) {
         existing.foto = d.foto || d.foto_url;
