@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import html2pdf from 'html2pdf.js';
 import RadarChart from './RadarChart';
 import PositionPitch from './PositionPitch';
+import RatingsAverageChart from './RatingsAverageChart';
 import { createClient } from '@/lib/supabase/client';
 import { signedPhotoUrl } from '@/lib/reports';
 import { fmtDate, LEVELS } from '@/lib/formModel';
@@ -13,6 +14,7 @@ interface MatchCard {
   lv?: string;
   partido?: string;
   fpartidoLabel: string;
+  fpartido?: string;
   categoria?: string;
   club?: string;
   observador?: string;
@@ -351,6 +353,16 @@ export default function ReportPreviewModal({
               <PositionPitch puesto={puesto} lateralidad={lateralidad} posX={posX} posY={posY} />
             </div>
           </section>
+
+          {matchCards.length > 0 && (
+            <section className="mb-6 break-inside-avoid">
+              <div className="mb-3">
+                <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">📊 Comparativo de informes</h2>
+                <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
+              </div>
+              <RatingsAverageChart cards={matchCards} groups={groups} />
+            </section>
+          )}
 
           {/* Informes deportivos */}
           {matchCards.length > 0 && (
