@@ -459,7 +459,7 @@ export default function ReportPreviewModal({
                         <div className="text-xs font-semibold text-gray-700 mb-1 p-1 bg-white rounded border-l-2 border-emerald-600">
                           📅 {g.series[0].label}
                         </div>
-                        <div style={{ width: '100%', height: '200px', marginTop: '8px' }}>
+                        <div style={{ width: '100%', height: '260px', marginTop: '8px', marginBottom: '12px' }}>
                           <RadarChart axes={g.series[0].axes} />
                         </div>
                         {g.series[0].obs?.map((o, i) => (
