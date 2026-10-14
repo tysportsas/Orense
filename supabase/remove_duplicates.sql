@@ -27,7 +27,7 @@ update public.reports r set data = v.patch::jsonb || r.data from (values
 ) as v(id, patch) where r.id = v.id::uuid;
 
 delete from public.reports where id in (
-'555d7c52-0000-0000-0000-000000000000',
+'555d7c52-417d-4fbd-8d35-bea637f26146',
 '2ec4415f-4bba-4c1a-9097-52133e227755',
 '3ff9e465-6a8e-4a2c-ae05-7fb4571b545c',
 '703571a3-308b-427a-aaa6-372cea55dbbf',
