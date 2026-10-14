@@ -24,12 +24,13 @@ interface MatchCard {
   val_proy: string;
   valoracion?: string;
   avg: number | null;
+  notes?: { label: string; text: string }[];
 }
 
 interface Group {
   id: string;
   title: string;
-  series: { id: string; label: string; axes: { label: string; value: number; text: string }[]; nivel?: string }[];
+  series: { id: string; label: string; axes: { label: string; value: number; text: string }[]; nivel?: string; obs?: { label: string; text: string }[] }[];
 }
 
 interface ReportPreviewModalProps {
@@ -402,6 +403,12 @@ export default function ReportPreviewModal({
                         </div>
                       </div>
                     )}
+                    {c.notes?.map((o, i) => (
+                      <p key={i} className="text-xs text-gray-700 bg-white rounded border border-gray-200 p-1.5 whitespace-pre-line">
+                        <b>{o.label}: </b>
+                        {o.text}
+                      </p>
+                    ))}
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
                       <span className="text-xs text-gray-600">Enlaces</span>
                       {validExternalUrl(c.link1) && (
@@ -455,6 +462,12 @@ export default function ReportPreviewModal({
                         <div style={{ width: '100%', height: '200px', marginTop: '8px' }}>
                           <RadarChart axes={g.series[0].axes} />
                         </div>
+                        {g.series[0].obs?.map((o, i) => (
+                          <p key={i} className="text-xs text-gray-700 mt-1 bg-white rounded border border-gray-200 p-1.5 whitespace-pre-line">
+                            <b>{o.label}: </b>
+                            {o.text}
+                          </p>
+                        ))}
                       </div>
                     )}
                   </div>

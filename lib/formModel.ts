@@ -688,6 +688,16 @@ export const ageOf = (iso: string) => {
 };
 export const shortVal = (v: string) => String(v).split(':')[0];
 
+export interface Note { label: string; text: string }
+
+/** Textos de observación escritos en los campos de tipo área (se omiten los enlaces). */
+export function areaNotes(fields: Field[], d: ReportData): Note[] {
+  return fields
+    .filter((f) => f.type === 'area' && f.id && !f.id.startsWith('links_'))
+    .map((f) => ({ label: f.label || 'Observación', text: String(d[f.id!] ?? '').trim() }))
+    .filter((n) => n.text);
+}
+
 export function radarAxes(sec: Section, d: ReportData) {
   if (!sec.radar) return null;
   const axes = sec.fields(d).filter(f => f.type === 'rate' && typeof d[f.id!] === 'number').map(f => {

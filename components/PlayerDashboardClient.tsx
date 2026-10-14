@@ -23,12 +23,13 @@ interface MatchCard {
   val_proy: string;
   valoracion?: string;
   avg: number | null;
+  notes?: { label: string; text: string }[];
 }
 
 interface Group {
   id: string;
   title: string;
-  series: { id: string; label: string; axes: { label: string; value: number; text: string }[]; nivel?: string }[];
+  series: { id: string; label: string; axes: { label: string; value: number; text: string }[]; nivel?: string; obs?: { label: string; text: string }[] }[];
 }
 
 function Badge({ v }: { v?: string }) {
@@ -226,6 +227,12 @@ export default function PlayerDashboardClient({
                   <span className="text-xs text-muted">Sin enlaces registrados</span>
                 )}
               </div>
+              {c.notes?.map((o, i) => (
+                <div key={i} className="rounded-lg bg-surface2 border border-line p-2">
+                  <b className="text-xs uppercase text-muted">{o.label}</b>
+                  <p className="text-sm whitespace-pre-line">{o.text}</p>
+                </div>
+              ))}
               <Link href={`/reports/${c.id}/edit`} className="text-sm font-semibold text-turf mt-1">
                 Ver informe
               </Link>
@@ -271,6 +278,12 @@ export default function PlayerDashboardClient({
                       atributos.
                     </p>
                     <RadarChart axes={cur.axes} />
+                    {cur.obs?.map((o, i) => (
+                      <div key={i} className="mt-2 rounded-lg bg-surface2 border border-line p-3">
+                        <b className="text-xs uppercase text-muted">{o.label}</b>
+                        <p className="text-sm whitespace-pre-line mt-0.5">{o.text}</p>
+                      </div>
+                    ))}
                   </>
                 )}
               </div>

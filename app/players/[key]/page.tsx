@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { listReportsForPlayer, playerPhotoFrom } from '@/lib/reports';
-import { LEVELS, NACIONALIDADES, nivel, ageOf, fmtDate, fmtTs, shortVal, radarAxes, visibleSections, excelSerialDate } from '@/lib/formModel';
+import { LEVELS, NACIONALIDADES, nivel, ageOf, fmtDate, fmtTs, shortVal, radarAxes, areaNotes, type Note, visibleSections, excelSerialDate } from '@/lib/formModel';
 import Header from '@/components/Header';
 import PlayerDashboardClient from '@/components/PlayerDashboardClient';
 import { normalizeRole } from '@/lib/auth';
@@ -52,9 +52,10 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
       .map((r) => {
         const sec = visibleSections(r.data).find((x) => g.secs.includes(x.id));
         const axes = sec ? radarAxes(sec, r.data) : null;
-        return axes ? { report: r, axes } : null;
+        const obs = sec ? areaNotes(sec.fields(r.data), r.data) : [];
+        return axes ? { report: r, axes, obs } : null;
       })
-      .filter(Boolean) as { report: (typeof reports)[number]; axes: { label: string; value: number; text: string }[] }[];
+      .filter(Boolean) as { report: (typeof reports)[number]; axes: { label: string; value: number; text: string }[]; obs: Note[] }[];
     return { ...g, series };
   });
 
@@ -68,7 +69,10 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
         n = 0;
       for (const sec of visibleSections(d)) for (const f of sec.fields(d)) if (f.type === 'rate' && !f.values && typeof d[f.id!] === 'number') { sum += d[f.id!]; n++; }
       const serialDate = excelSerialDate(d.partido);
-      return { id: r.id, lv: lv?.short, partido: serialDate ? 'Partido registrado' : d.partido, fpartido: d.fpartido || serialDate, categoria: d.categoria, club: d.club, observador: d.observador, link1: d.link1, link2: d.link2, val_partido: d.val_partido, val_proy: d.val_proy, valoracion: d.valoracion, avg: n ? sum / n : null };
+      const notes = visibleSections(d)
+        .filter((sec) => !sec.radar)
+        .flatMap((sec) => areaNotes(sec.fields(d), d));
+      return { id: r.id, notes, lv: lv?.short, partido: serialDate ? 'Partido registrado' : d.partido, fpartido: d.fpartido || serialDate, categoria: d.categoria, club: d.club, observador: d.observador, link1: d.link1, link2: d.link2, val_partido: d.val_partido, val_proy: d.val_proy, valoracion: d.valoracion, avg: n ? sum / n : null };
     });
 
   return (
@@ -108,7 +112,7 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
           const serialDate = excelSerialDate(s.report.data.partido);
           const date = s.report.data.fpartido || serialDate;
           const match = serialDate ? 'Partido registrado' : s.report.data.partido || '';
-          return { id: s.report.id, label: `${date ? fmtDate(date) : 'Sin fecha'}, ${match}`, axes: s.axes, nivel: LEVELS[nivel(s.report.data) - 1]?.short };
+          return { id: s.report.id, obs: s.obs, label: `${date ? fmtDate(date) : 'Sin fecha'}, ${match}`, axes: s.axes, nivel: LEVELS[nivel(s.report.data) - 1]?.short };
         }) }))}
       />
     </div>
