@@ -15,10 +15,10 @@ function wrapLabel(t: string, max = 17) {
 
 export default function RadarChart({ axes }: { axes: { label: string; value: number; text: string }[] }) {
   const n = axes.length;
-  const W = 480,
-    H = 380,
-    cx = 240,
-    cy = 190,
+  const W = 560,
+    H = 440,
+    cx = 280,
+    cy = 220,
     R = 118,
     MAX = 5;
   const pt = (i: number, r: number) => {
@@ -69,7 +69,7 @@ export default function RadarChart({ axes }: { axes: { label: string; value: num
         const lh = 14;
         const y0 = sn < -0.5 ? y - (lines.length - 1) * lh : sn > 0.5 ? y + 9 : y - ((lines.length - 1) * lh) / 2 + 4;
         return (
-          <text key={i} x={x} textAnchor={anchor as any} fontSize={12} fill="#14211a" fontFamily="Barlow, sans-serif">
+          <text key={i} x={x} textAnchor={anchor as any} fontSize={13} fill="#14211a" fontFamily="Barlow, sans-serif">
             {lines.map((l, j) => (
               <tspan key={j} x={x} y={y0 + j * lh}>
                 {l}

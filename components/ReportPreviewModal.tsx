@@ -244,7 +244,7 @@ export default function ReportPreviewModal({
           windowHeight: el.scrollHeight
         },
         jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' as const, compress: true },
-        pagebreak: { mode: ['css', 'avoid-all'], avoid: ['section', 'article'] }
+        pagebreak: { mode: ['css'], avoid: ['.pdf-avoid'] }
       };
 
       await html2pdf().set(options).from(el).save();
@@ -286,7 +286,7 @@ export default function ReportPreviewModal({
         {/* Content */}
         <div ref={contentRef} className="px-3 py-4 max-h-[calc(100vh-200px)] overflow-y-auto bg-white">
           {/* Header con Logo */}
-          <div className="mb-4 pb-3 border-b-2 border-emerald-900">
+          <div className="mb-4 pb-3 border-b-2 border-emerald-900 pdf-avoid">
             <div className="flex items-center gap-2 mb-2">
               <div className="flex-shrink-0">
                 <img 
@@ -307,7 +307,7 @@ export default function ReportPreviewModal({
           </div>
 
           {/* Resumen biográfico */}
-          <section className="mb-6 break-inside-avoid">
+          <section className="mb-6">
             <div className="mb-3">
               <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">📋 Resumen Biográfico</h2>
               <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
@@ -356,25 +356,27 @@ export default function ReportPreviewModal({
           </section>
 
           {matchCards.length > 0 && (
-            <section className="mb-6 break-inside-avoid">
+            <section className="mb-6">
               <div className="mb-3">
                 <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">📊 Comparativo de informes</h2>
                 <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
               </div>
-              <RatingsAverageChart cards={matchCards} groups={groups} />
+              <div className="pdf-avoid">
+                <RatingsAverageChart cards={matchCards} groups={groups} />
+              </div>
             </section>
           )}
 
           {/* Informes deportivos */}
           {matchCards.length > 0 && (
-            <section className="mb-6 break-inside-avoid">
+            <section className="mb-6">
               <div className="mb-3">
                 <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">⚽ Informes Deportivos por Partido</h2>
                 <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {matchCards.map((c) => (
-                  <article key={c.id} className="bg-gray-50 border border-gray-200 rounded-lg p-2 grid gap-1 text-xs">
+                  <article key={c.id} className="pdf-avoid bg-gray-50 border border-gray-200 rounded-lg p-2 grid gap-1 text-xs">
                     <div className="flex justify-between gap-2 items-start">
                       <div>
                         <div className="text-xs text-gray-600">
@@ -443,14 +445,14 @@ export default function ReportPreviewModal({
 
           {/* Gráficos de araña */}
           {groups.length > 0 && (
-            <section className="mb-6 break-inside-avoid">
+            <section className="mb-6">
               <div className="mb-3">
                 <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">📊 Análisis de Atributos (Gráficos)</h2>
                 <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {groups.map((g) => (
-                  <div key={g.id} className="space-y-1">
+                  <div key={g.id} className="space-y-1 pdf-avoid">
                     <h3 className="font-bold text-sm text-emerald-900 bg-emerald-50 p-1.5 rounded border-l-4 border-yellow-500">
                       {g.title}
                     </h3>
@@ -459,7 +461,7 @@ export default function ReportPreviewModal({
                         <div className="text-xs font-semibold text-gray-700 mb-1 p-1 bg-white rounded border-l-2 border-emerald-600">
                           📅 {g.series[0].label}
                         </div>
-                        <div style={{ width: '100%', height: '260px', marginTop: '8px', marginBottom: '12px' }}>
+                        <div style={{ width: '100%', marginTop: '8px' }}>
                           <RadarChart axes={g.series[0].axes} />
                         </div>
                         {g.series[0].obs?.map((o, i) => (
@@ -477,7 +479,7 @@ export default function ReportPreviewModal({
           )}
 
           {/* Footer */}
-          <div className="mt-4 pt-2 border-t-2 border-emerald-900 space-y-1">
+          <div className="mt-4 pt-2 border-t-2 border-emerald-900 space-y-1 pdf-avoid">
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2">
               <p className="text-xs font-semibold text-emerald-900 mb-1">INFORMACIÓN DEL DOCUMENTO</p>
               <div className="grid grid-cols-2 gap-1 text-xs text-gray-700">

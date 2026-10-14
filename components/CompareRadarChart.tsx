@@ -23,10 +23,10 @@ function wrapLabel(t: string, max = 14) {
 /** Radar con varias series superpuestas (escala 1 a 5) para comparar tipos de informe o informes. */
 export default function CompareRadarChart({ axes, series }: { axes: string[]; series: CompareSeries[] }) {
   const n = axes.length;
-  const W = 520,
-    H = 400,
-    cx = 260,
-    cy = 200,
+  const W = 600,
+    H = 440,
+    cx = 300,
+    cy = 220,
     R = 125,
     MAX = 5;
   const pt = (i: number, r: number) => {
