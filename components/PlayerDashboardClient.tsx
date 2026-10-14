@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { signedPhotoUrl, getReport, updateReport } from '@/lib/reports';
 import RadarChart from './RadarChart';
+import CompareRadarChart, { type CompareSeries } from './CompareRadarChart';
 import PositionPitch from './PositionPitch';
 
 interface MatchCard {
@@ -72,11 +73,57 @@ function AverageBars({ cards }: { cards: MatchCard[] }) {
   );
 }
 
-function RatingsAverageChart({ cards }: { cards: MatchCard[] }) {
-  const [mode, setMode] = useState<'all' | 'type'>('all');
+const COLORS = ['#1f7a45', '#b58a1e', '#2563eb', '#b3261e', '#7c3aed', '#0f766e', '#c2410c', '#475569'];
+
+const CATEGORIES: [string, RegExp][] = [
+  ['Puesto', /puesto/i],
+  ['Técnico', /t[ée]cnic/i],
+  ['Táctico', /t[áa]ctic/i],
+  ['Físico', /f[íi]sic/i],
+  ['Mental', /psicol|mental/i]
+];
+
+function RatingsAverageChart({ cards, groups }: { cards: MatchCard[]; groups: Group[] }) {
+  const [mode, setMode] = useState<'all' | 'type' | 'report'>('all');
   if (metricsOf(cards).every((m) => m.avg == null)) return null;
 
+  // Promedio de atributos por categoría para cada informe, tomado de los gráficos de araña.
+  const catOf = (cardId: string, re: RegExp) => {
+    const vals: number[] = [];
+    for (const g of groups) {
+      if (!re.test(g.title)) continue;
+      for (const sr of g.series) if (sr.id === cardId) vals.push(...sr.axes.map((a) => a.value));
+    }
+    return average(vals);
+  };
+  const scores = (list: MatchCard[]): (number | null)[] => [
+    average(list.map((c) => scoreOf(c.valoracion))),
+    average(list.map((c) => scoreOf(c.val_partido))),
+    average(list.map((c) => scoreOf(c.val_proy))),
+    ...CATEGORIES.map(([, re]) => average(list.map((c) => catOf(c.id, re))))
+  ];
+  const allAxes = ['Valoración final', 'Valoración del partido', 'Proyección', ...CATEGORIES.map(([l]) => l)];
+  const keep = allAxes.map((_, i) => cards.some((c) => scores([c])[i] != null));
+  const axes = allAxes.filter((_, i) => keep[i]);
+  const pick = (v: (number | null)[]) => v.filter((_, i) => keep[i]);
+
   const types = [...new Set(cards.map((c) => c.lv || 'Sin tipo'))].sort();
+  const compare: CompareSeries[] =
+    mode === 'type'
+      ? types.map((t, i) => {
+          const group = cards.filter((c) => (c.lv || 'Sin tipo') === t);
+          return { id: t, label: `${t} (${group.length})`, color: COLORS[i % COLORS.length], values: pick(scores(group)) };
+        })
+      : cards
+          .slice()
+          .sort((a, b) => (a.fpartido || '').localeCompare(b.fpartido || ''))
+          .map((c, i) => ({
+            id: c.id,
+            label: `${c.fpartidoLabel} · ${c.lv || 'Sin tipo'}`,
+            color: COLORS[i % COLORS.length],
+            values: pick(scores([c]))
+          }));
+
   const timeline = cards
     .map((c) => ({ id: c.id, label: c.fpartidoLabel, date: c.fpartido || '', score: scoreOf(c.valoracion) }))
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -88,8 +135,8 @@ function RatingsAverageChart({ cards }: { cards: MatchCard[] }) {
           <h4 className="font-display font-bold text-lg">Promedio de valoraciones</h4>
           <p className="text-xs text-muted mb-3">Escala 1 a 5 · {cards.length} informe(s)</p>
         </div>
-        <div className="flex gap-1 text-xs">
-          {([['all', 'General'], ['type', 'Por tipo de informe']] as const).map(([k, l]) => (
+        <div className="flex gap-1 text-xs flex-wrap">
+          {([['all', 'General'], ['type', 'Comparar tipos'], ['report', 'Comparar informes']] as const).map(([k, l]) => (
             <button
               key={k}
               type="button"
@@ -104,20 +151,10 @@ function RatingsAverageChart({ cards }: { cards: MatchCard[] }) {
 
       {mode === 'all' ? (
         <AverageBars cards={cards} />
+      ) : axes.length < 3 ? (
+        <p className="text-sm text-muted">No hay suficientes datos para el comparativo (se necesitan al menos 3 criterios).</p>
       ) : (
-        <div className="grid gap-4">
-          {types.map((t) => {
-            const group = cards.filter((c) => (c.lv || 'Sin tipo') === t);
-            return (
-              <div key={t}>
-                <p className="text-sm font-semibold mb-1">
-                  {t} <span className="text-xs text-muted font-normal">· {group.length} informe(s)</span>
-                </p>
-                <AverageBars cards={group} />
-              </div>
-            );
-          })}
-        </div>
+        <CompareRadarChart axes={axes} series={compare} />
       )}
 
       {mode === 'all' && timeline.length > 1 && (
@@ -258,7 +295,7 @@ export default function PlayerDashboardClient({
                 </div>
               ))}
             </div>
-            <RatingsAverageChart cards={matchCards} />
+            <RatingsAverageChart cards={matchCards} groups={groups} />
           </div>
           <div className="flex flex-col items-center gap-1">
             <PositionPitch
