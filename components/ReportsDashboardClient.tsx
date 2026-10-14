@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { ReportRow } from '@/lib/reports';
 import { keyOf, deleteReport, getReport, signedPhotoUrl, listReportsForPlayer, playerPhotoFrom } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
-import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, nivel, NACIONALIDADES, ageOf, fmtTs, shortVal, radarAxes, visibleSections, excelSerialDate } from '@/lib/formModel';
+import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, nivel, NACIONALIDADES, ageOf, fmtTs, shortVal, radarAxes, areaNotes, visibleSections, excelSerialDate } from '@/lib/formModel';
 import ReportPreviewModal from './ReportPreviewModal';
 
 interface Props {
@@ -27,12 +27,13 @@ interface MatchCard {
   val_proy: string;
   valoracion?: string;
   avg: number | null;
+  notes?: { label: string; text: string }[];
 }
 
 interface Group {
   id: string;
   title: string;
-  series: { id: string; label: string; axes: { label: string; value: number; text: string }[]; nivel?: string }[];
+  series: { id: string; label: string; axes: { label: string; value: number; text: string }[]; nivel?: string; obs?: { label: string; text: string }[] }[];
 }
 
 interface PreviewData {
@@ -150,6 +151,9 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
           const serialDate = excelSerialDate(rdata.partido);
           return {
             id: r.id,
+            notes: visibleSections(rdata)
+              .filter((sec) => !sec.radar)
+              .flatMap((sec) => areaNotes(sec.fields(rdata), rdata)),
             lv: lv?.short,
             partido: serialDate ? 'Partido registrado' : rdata.partido,
             fpartido: rdata.fpartido || serialDate,
@@ -179,9 +183,9 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
           .map((r) => {
             const sec = visibleSections(r.data).find((x) => g.secs.includes(x.id));
             const axes = sec ? radarAxes(sec, r.data) : null;
-            return axes ? { report: r, axes } : null;
+            return axes ? { report: r, axes, obs: areaNotes(sec!.fields(r.data), r.data) } : null;
           })
-          .filter(Boolean) as { report: (typeof playerReports)[number]; axes: { label: string; value: number; text: string }[] }[];
+          .filter(Boolean) as { report: (typeof playerReports)[number]; axes: { label: string; value: number; text: string }[]; obs: { label: string; text: string }[] }[];
 
         return {
           ...g,
@@ -193,6 +197,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
               id: s.report.id,
               label: `${date ? fmtDate(date) : 'Sin fecha'}, ${match}`,
               axes: s.axes,
+              obs: s.obs,
               nivel: LEVELS[nivel(s.report.data) - 1]?.short
             };
           })
