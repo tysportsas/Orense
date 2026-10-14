@@ -435,7 +435,7 @@ export interface BulkImportResult {
 const isBlank = (value: unknown) => value == null || String(value).trim() === '';
 
 function importIdentity(data: ReportData): string {
-  return [norm(data.nombre || ''), data.fnac || '', norm(data.partido || ''), data.fpartido || ''].join('|');
+  return [norm(data.nombre || ''), data.fnac || '', norm(data.partido || ''), data.fpartido || '', norm(data.tipo_informe || '')].join('|');
 }
 
 /** Completa solo los campos vacíos del informe existente con los datos importados. */
@@ -458,14 +458,16 @@ function fillMissingFields(existing: ReportData, incoming: ReportData): ReportDa
 export async function bulkInsertReports(
   supabase: SupabaseClient,
   items: ReportData[],
-  onProgress?: (current: number, total: number) => void
+  onProgress?: (current: number, total: number) => void,
+  options: { updateExisting?: boolean; dryRun?: boolean } = {}
 ): Promise<BulkImportResult> {
+  const { updateExisting = true, dryRun = false } = options;
   const result: BulkImportResult = { success: 0, updated: 0, skipped: 0, failed: 0, errors: [] };
 
   const existingByPlayerMatch = new Map<string, ReportRow[]>();
   try {
     for (const report of await listAllReports(supabase)) {
-      const looseKey = `${norm(report.data.nombre || '')}|${report.data.fnac || ''}|${norm(report.data.partido || '')}`;
+      const looseKey = `${norm(report.data.nombre || '')}|${report.data.fnac || ''}|${norm(report.data.partido || '')}|${report.data.fpartido || ''}|${norm(report.data.tipo_informe || '')}`;
       existingByPlayerMatch.set(looseKey, [...(existingByPlayerMatch.get(looseKey) ?? []), report]);
     }
   } catch (error: any) {
@@ -491,7 +493,7 @@ export async function bulkInsertReports(
     }
     seenInFile.add(identity);
 
-    const looseKey = `${norm(item.nombre || '')}|${item.fnac || ''}|${norm(item.partido || '')}`;
+    const looseKey = `${norm(item.nombre || '')}|${item.fnac || ''}|${norm(item.partido || '')}|${item.fpartido || ''}|${norm(item.tipo_informe || '')}`;
     const candidates = existingByPlayerMatch.get(looseKey) ?? [];
 
     if (candidates.length === 0) {
@@ -501,10 +503,18 @@ export async function bulkInsertReports(
 
     // Si ya hay varios informes iguales en la base, se completan todos en lugar de crear otro.
     let touched = false;
+    if (!updateExisting) {
+      result.skipped++;
+      continue;
+    }
     for (const existing of candidates) {
       const merged = fillMissingFields(existing.data, item);
       if (!merged) continue;
       touched = true;
+      if (dryRun) {
+        result.updated++;
+        continue;
+      }
       try {
         await updateReport(supabase, existing.id, merged);
         result.updated++;
@@ -515,6 +525,11 @@ export async function bulkInsertReports(
     }
     if (!touched) result.skipped++;
     onProgress?.(processed, items.length);
+  }
+
+  if (dryRun) {
+    result.success = toInsert.length;
+    return result;
   }
 
   const batchSize = 100;
