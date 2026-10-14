@@ -404,7 +404,7 @@ export default function ReportPreviewModal({
                 <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">📊 Comparativo de informes</h2>
                 <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
               </div>
-              <div className="pdf-avoid">
+              <div className="pdf-avoid [&_svg]:max-w-[400px] [&_svg]:mx-auto">
                 <RatingsAverageChart cards={matchCards} groups={groups} />
               </div>
             </section>
