@@ -150,6 +150,8 @@ export function normalizeReportData(data: ReportData): ReportData {
   const normalized = { ...data };
   for (const [sourceKey, value] of Object.entries(data)) {
     const fieldKey = canonicalReportFieldKey(sourceKey);
+    // Las claves como att_CENTRAL_cierres se guardan con mayúsculas y deben quedar como número.
+    normalized[sourceKey] = normalizeReportValue(sourceKey, value);
     if (fieldKey === sourceKey) {
       normalized[fieldKey] = normalizeReportValue(fieldKey, value);
       continue;
