@@ -4,7 +4,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
-import { canonicalReportFieldKey, excelSerialDate, normalizeReportData, norm, type ReportData } from './formModel';
+import { ATT, POS, canonicalReportFieldKey, excelSerialDate, normalizeReportData, norm, slug, type ReportData } from './formModel';
 import { createReport, listAllReports, updateReport, type ReportRow } from './reports';
 
 export interface ParsedImportRow {
@@ -136,7 +136,7 @@ export function mapHeaderToFieldKey(rawHeader: string): string {
     return 'valoracion';
   }
 
-  if (clean.includes('puesto') || clean.includes('posicion')) {
+  if (clean.startsWith('puesto') || clean.startsWith('caracterizacion_puesto') || clean.startsWith('atributos_puesto') || clean === 'posicion') {
     return 'puesto';
   }
 
@@ -179,21 +179,95 @@ export function mapHeaderToFieldKey(rawHeader: string): string {
   return clean;
 }
 
+
+const FIS_LABELS: Record<string, string> = {
+  intensidad: 'intensidad', altura: 'altura', peso: 'peso', masa: 'masa', velocidad_inicial: 'vel_inicial',
+  velocidad_fondo: 'vel_fondo', coordinacion: 'coordinacion', fuerza_golpeo_balon: 'fuerza_golpeo',
+  resistencia: 'resistencia', fuerza_salto: 'fuerza_salto', capacidad_de_cambios: 'cambios', potencia: 'potencia'
+};
+const FIS_F_LABELS: Record<string, string> = { altura: 'altura', peso: 'peso', velocidad: 'velocidad', resistencia: 'resistencia' };
+const MENF_KEYS = new Set(['psi_liderazgo', 'psi_concentracion', 'psi_trabajo_equipo', 'psi_resiliencia']);
+
+/**
+ * Traduce los encabezados de la hoja a claves del formulario teniendo en cuenta su posición:
+ * la hoja repite columnas ("OBSERVACION", "VALORACION", atributos por puesto, etc.) y
+ * solo el bloque donde aparecen indica a qué sección pertenecen.
+ */
+export function mapSheetHeaders(headers: string[]): string[] {
+  const keys = headers.map((h) => mapHeaderToFieldKey(h));
+  const clean = headers.map((h) => h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim());
+  const label = (i: number) => clean[i].replace(/\s+\d\s*[.)].*$/, '').trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+  let attBlock = -1;
+  let attIndex = 0;
+  let afterFisF = false;
+  let fisMode: '' | 'fis' | 'fisf' = '';
+
+  for (let i = 0; i < keys.length; i++) {
+    const isObs = /^obser[a-z]*$/.test(clean[i]);
+
+    if (clean[i].startsWith('atributos puesto')) {
+      attBlock = 0;
+      attIndex = 0;
+      continue;
+    }
+    if (attBlock >= 0 && attBlock < POS.length) {
+      const position = POS[attBlock];
+      if (isObs) {
+        keys[i] = `att_obs_${position}`;
+        attBlock++;
+        attIndex = 0;
+      } else if (clean[i]) {
+        const attribute = (ATT as Record<string, string[]>)[position][attIndex++];
+        keys[i] = attribute ? `att_${position}_${slug(attribute)}` : '';
+      }
+      continue;
+    }
+
+    if (/^transicion def.ata/.test(clean[i])) keys[i] = 'tac_trans_da';
+    else if (/^transicion ata.def/.test(clean[i])) keys[i] = 'tac_trans_ad';
+    else if (/^experiencia en la categoria/.test(clean[i])) keys[i] = 'rend_exp';
+    else if (/nada acorde a su posicion/.test(clean[i])) {
+      const name = label(i);
+      if (name === 'intensidad') fisMode = 'fis';
+      else if (!fisMode) fisMode = 'fisf';
+      const mapped = fisMode === 'fis' ? FIS_LABELS[name] : FIS_F_LABELS[name];
+      if (mapped) keys[i] = `${fisMode}_${mapped}`;
+    } else if (/^trabajo en equipo/.test(clean[i])) keys[i] = 'psi_trabajo_equipo';
+
+    if (fisMode === 'fisf' && !/^fisf_|^fisf$/.test(keys[i]) && !isObs) {
+      afterFisF = true;
+    }
+    if (afterFisF && /^(rend_|val|tac_|tec|car_)/.test(keys[i])) afterFisF = false;
+    if (afterFisF && MENF_KEYS.has(keys[i])) keys[i] = keys[i].replace(/^psi_/, 'menf_');
+
+    if (isObs) {
+      const previousKey = keys.slice(0, i).reverse().find((k) => k && !/(?:^obser|_obs)/.test(k)) ?? '';
+      const car = previousKey.match(/^car_([A-Z]+)$/);
+      const prefix = previousKey.match(/^(tac|tecf|tec|psi|menf|fisf|fis|rend)_/);
+      if (car) keys[i] = `car_obs_${car[1]}`;
+      else if (prefix) keys[i] = `${prefix[1]}_obs`;
+    } else if (!/^fisf?_/.test(keys[i])) fisMode = '';
+  }
+
+  // Los bloques de técnica de formativas traen "PASE" (sin corto/largo) y se guardan como tecf_*.
+  for (let i = 0; i < keys.length; i++) {
+    if (keys[i] !== 'tec_pase') continue;
+    let from = i;
+    while (from > 0 && /^tec_/.test(keys[from - 1])) from--;
+    let to = i;
+    while (to + 1 < keys.length && /^tec_/.test(keys[to + 1])) to++;
+    for (let j = from; j <= to; j++) keys[j] = keys[j].replace(/^tec_/, 'tecf_');
+  }
+  return keys;
+}
+
 /** Procesa el contenido de un archivo CSV (soporta comas o punto y coma como delimitador) */
 export function parseCSV(text: string): ParsedImportRow[] {
   const records = parseCSVRecords(text.replace(/^\uFEFF/, ''));
   if (records.length < 2) return [];
 
-  const mappedHeaders = records[0].map((h) => mapHeaderToFieldKey(h.replace(/\s+/g, ' ').trim()));
-
-  // Las columnas "OBSERVACION" se repiten en la hoja: la que sigue a una posición
-  // (ARQUERO, CENTRAL, ...) es la observación de esa caracterización.
-  mappedHeaders.forEach((key, idx) => {
-    if (key !== 'observacion' && key !== 'obsercacion') return;
-    const previous = mappedHeaders[idx - 1] ?? '';
-    const position = previous.match(/^car_([A-Z]+)$/);
-    if (position) mappedHeaders[idx] = `car_obs_${position[1]}`;
-  });
+  const mappedHeaders = mapSheetHeaders(records[0].map((h) => h.replace(/\s+/g, ' ').trim()));
   const results: ParsedImportRow[] = [];
 
   for (const values of records.slice(1)) {
