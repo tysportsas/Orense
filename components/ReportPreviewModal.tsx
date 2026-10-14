@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import html2pdf from 'html2pdf.js';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import RadarChart from './RadarChart';
 import PositionPitch from './PositionPitch';
 import RatingsAverageChart from './RatingsAverageChart';
@@ -231,23 +232,65 @@ export default function ReportPreviewModal({
       // Esperar a que todas las imágenes estáticas (logo, etc.) estén cargadas.
       await waitForImages(el);
 
-      const options = {
-        margin: [8, 6, 8, 6] as [number, number, number, number],
-        filename: `informe-${nombre.replace(/\s+/g, '_')}-${reportId.slice(0, 8)}.pdf`,
-        image: { type: 'jpeg' as const, quality: 0.95 },
-        html2canvas: {
-          scale: 1.5,
-          useCORS: false,
-          allowTaint: true,
-          logging: false,
-          windowWidth: el.scrollWidth,
-          windowHeight: el.scrollHeight
-        },
-        jsPDF: { orientation: 'portrait' as const, unit: 'mm' as const, format: 'a4' as const, compress: true },
-        pagebreak: { mode: ['css'], avoid: ['.pdf-avoid'] }
-      };
+      el.scrollTop = 0;
+      const base = el.getBoundingClientRect().top;
+      const width = el.scrollWidth;
+      // Zonas que no deben partirse entre páginas (en píxeles CSS relativos al contenido).
+      const zones: [number, number][] = [];
+      el.querySelectorAll<HTMLElement>('.pdf-avoid').forEach((n) => {
+        const r = n.getBoundingClientRect();
+        zones.push([r.top - base, r.bottom - base]);
+      });
+      // Los títulos de sección se mantienen unidos al contenido que sigue.
+      el.querySelectorAll<HTMLElement>('.pdf-head').forEach((n) => {
+        const r = n.getBoundingClientRect();
+        zones.push([r.top - base, r.bottom - base + 70]);
+      });
 
-      await html2pdf().set(options).from(el).save();
+      const scale = 2;
+      const canvas = await html2canvas(el, {
+        scale,
+        useCORS: false,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: width,
+        windowHeight: el.scrollHeight
+      });
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const mx = 6, my = 8;
+      const mmPerPx = (pageW - 2 * mx) / width; // mm por píxel CSS
+      const pagePx = (pageH - 2 * my) / mmPerPx; // alto útil de página en píxeles CSS
+      const totalPx = canvas.height / scale;
+
+      let y = 0;
+      let first = true;
+      while (y < totalPx - 1) {
+        let end = Math.min(y + pagePx, totalPx);
+        if (end < totalPx) {
+          for (let guard = 0; guard < 20; guard++) {
+            const z = zones.find(([t, b]) => t > y + 40 && t < end && b > end);
+            if (!z) break;
+            end = z[0];
+          }
+        }
+        const sliceH = Math.max(1, Math.round((end - y) * scale));
+        const slice = document.createElement('canvas');
+        slice.width = canvas.width;
+        slice.height = sliceH;
+        const ctx = slice.getContext('2d')!;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, slice.width, slice.height);
+        ctx.drawImage(canvas, 0, Math.round(y * scale), canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+        if (!first) pdf.addPage();
+        first = false;
+        pdf.addImage(slice.toDataURL('image/jpeg', 0.95), 'JPEG', mx, my, pageW - 2 * mx, (sliceH / scale) * mmPerPx, undefined, 'FAST');
+        y = end;
+      }
+      pdf.save(`informe-${nombre.replace(/\s+/g, '_')}-${reportId.slice(0, 8)}.pdf`);
     } catch (err) {
       console.error('Error al generar PDF:', err);
       alert('Error al generar el PDF. Intenta de nuevo.');
@@ -308,7 +351,7 @@ export default function ReportPreviewModal({
 
           {/* Resumen biográfico */}
           <section className="mb-6">
-            <div className="mb-3">
+            <div className="mb-3 pdf-head">
               <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">📋 Resumen Biográfico</h2>
               <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
             </div>
@@ -357,7 +400,7 @@ export default function ReportPreviewModal({
 
           {matchCards.length > 0 && (
             <section className="mb-6">
-              <div className="mb-3">
+              <div className="mb-3 pdf-head">
                 <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">📊 Comparativo de informes</h2>
                 <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
               </div>
@@ -370,7 +413,7 @@ export default function ReportPreviewModal({
           {/* Informes deportivos */}
           {matchCards.length > 0 && (
             <section className="mb-6">
-              <div className="mb-3">
+              <div className="mb-3 pdf-head">
                 <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">⚽ Informes Deportivos por Partido</h2>
                 <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
               </div>
@@ -446,7 +489,7 @@ export default function ReportPreviewModal({
           {/* Gráficos de araña */}
           {groups.length > 0 && (
             <section className="mb-6">
-              <div className="mb-3">
+              <div className="mb-3 pdf-head">
                 <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">📊 Análisis de Atributos (Gráficos)</h2>
                 <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
               </div>
