@@ -124,6 +124,10 @@ export function mapHeaderToFieldKey(rawHeader: string): string {
     return 'val_partido';
   }
 
+  if (clean.startsWith('valoracion') && clean.includes('partido')) {
+    return 'val_partido';
+  }
+
   if (clean.includes('proyeccion') || clean.includes('val_proy')) {
     return 'val_proy';
   }
@@ -181,6 +185,15 @@ export function parseCSV(text: string): ParsedImportRow[] {
   if (records.length < 2) return [];
 
   const mappedHeaders = records[0].map((h) => mapHeaderToFieldKey(h.replace(/\s+/g, ' ').trim()));
+
+  // Las columnas "OBSERVACION" se repiten en la hoja: la que sigue a una posición
+  // (ARQUERO, CENTRAL, ...) es la observación de esa caracterización.
+  mappedHeaders.forEach((key, idx) => {
+    if (key !== 'observacion' && key !== 'obsercacion') return;
+    const previous = mappedHeaders[idx - 1] ?? '';
+    const position = previous.match(/^car_([A-Z]+)$/);
+    if (position) mappedHeaders[idx] = `car_obs_${position[1]}`;
+  });
   const results: ParsedImportRow[] = [];
 
   for (const values of records.slice(1)) {
