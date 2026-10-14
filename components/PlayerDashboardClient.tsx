@@ -12,6 +12,7 @@ interface MatchCard {
   lv?: string;
   partido?: string;
   fpartidoLabel: string;
+  fpartido?: string;
   categoria?: string;
   club?: string;
   observador?: string;
@@ -34,6 +35,61 @@ function Badge({ v }: { v?: string }) {
   const n = v.charAt(0);
   const label = v.replace(/^\d\./, '');
   return <span className={`badge v${n}`}>{label.charAt(0) + label.slice(1).toLowerCase()}</span>;
+}
+
+const scoreOf = (v?: string) => {
+  const n = parseInt(String(v ?? '').charAt(0), 10);
+  return n >= 1 && n <= 5 ? n : null;
+};
+
+function average(values: (number | null)[]) {
+  const nums = values.filter((n): n is number => n != null);
+  return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+}
+
+function RatingsAverageChart({ cards }: { cards: MatchCard[] }) {
+  const metrics = [
+    { label: 'Valoración final', values: cards.map((c) => scoreOf(c.valoracion)) },
+    { label: 'Valoración del partido', values: cards.map((c) => scoreOf(c.val_partido)) },
+    { label: 'Proyección', values: cards.map((c) => scoreOf(c.val_proy)) },
+    { label: 'Atributos', values: cards.map((c) => c.avg) }
+  ].map((m) => ({ ...m, avg: average(m.values), count: m.values.filter((n) => n != null).length }));
+
+  if (metrics.every((m) => m.avg == null)) return null;
+  const timeline = cards
+    .map((c) => ({ id: c.id, label: c.fpartidoLabel, date: c.fpartido || '', score: scoreOf(c.valoracion) }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return (
+    <div className="mt-4 bg-surface2 border border-line rounded-xl p-4">
+      <h4 className="font-display font-bold text-lg">Promedio de valoraciones</h4>
+      <p className="text-xs text-muted mb-3">Escala 1 a 5 · {cards.length} informe(s)</p>
+      <div className="grid gap-2">
+        {metrics.map((m) => (
+          <div key={m.label} className="grid grid-cols-[150px_1fr_44px] items-center gap-2 text-sm">
+            <span>{m.label}</span>
+            <div className="h-3 rounded-full bg-white border border-line overflow-hidden" title={`${m.count} dato(s)`}>
+              <div className="h-full bg-green" style={{ width: `${((m.avg ?? 0) / 5) * 100}%` }} />
+            </div>
+            <b className="font-display text-right">{m.avg == null ? '—' : m.avg.toFixed(1)}</b>
+          </div>
+        ))}
+      </div>
+      {timeline.length > 1 && (
+        <div className="mt-4">
+          <p className="text-xs text-muted mb-1">Valoración final por informe (del más antiguo al más reciente)</p>
+          <div className="flex items-end gap-2 h-24">
+            {timeline.map((t) => (
+              <div key={t.id} className="flex-1 min-w-[28px] max-w-[64px] flex flex-col items-center justify-end h-full" title={`${t.label}: ${t.score ?? 'sin dato'}`}>
+                <span className="text-xs font-semibold">{t.score ?? '—'}</span>
+                <div className="w-full rounded-t bg-gold" style={{ height: `${((t.score ?? 0) / 5) * 100}%` }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function matchTitle(value?: string) {
@@ -157,6 +213,7 @@ export default function PlayerDashboardClient({
                 </div>
               ))}
             </div>
+            <RatingsAverageChart cards={matchCards} />
           </div>
           <div className="flex flex-col items-center gap-1">
             <PositionPitch
