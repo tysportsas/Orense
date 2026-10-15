@@ -36,7 +36,7 @@ export default function CompareRadarChart({ axes, series }: { axes: string[]; se
   const fmt = (p: number[]) => p.map((v) => v.toFixed(1)).join(',');
 
   return (
-    <div className="cmp-radar">
+    <div className="cmp-radar pdf-avoid">
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Comparativo de valoraciones">
         {Array.from({ length: MAX }, (_, k) => (
           <polygon key={k} points={axes.map((_, i) => fmt(pt(i, (R * (k + 1)) / MAX))).join(' ')} fill="none" stroke="#d3dbd0" strokeWidth={1} />

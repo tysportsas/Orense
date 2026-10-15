@@ -236,7 +236,9 @@ export default function ReportPreviewModal({
       // Solo para el PDF: radar comparativo compacto para que el bloque quepa en la hoja 1.
       const cmp = Array.from(el.querySelectorAll<HTMLElement>('.cmp-radar'));
       const prevMax = cmp.map((n) => n.style.maxWidth);
-      cmp.forEach((n) => (n.style.maxWidth = '250px'));
+      cmp.forEach((n) => (n.style.maxWidth = '300px'));
+      // El selector de informes es interactivo y la leyenda ya los identifica.
+      el.querySelectorAll<HTMLElement>('.pdf-chips').forEach((n) => (n.style.display = 'none'));
       const base = el.getBoundingClientRect().top;
       const width = el.scrollWidth;
       // Zonas que no deben partirse entre páginas (en píxeles CSS relativos al contenido).
@@ -301,6 +303,7 @@ export default function ReportPreviewModal({
       alert('Error al generar el PDF. Intenta de nuevo.');
     } finally {
       el.querySelectorAll<HTMLElement>('.cmp-radar').forEach((n) => (n.style.maxWidth = ''));
+      el.querySelectorAll<HTMLElement>('.pdf-chips').forEach((n) => (n.style.display = ''));
       el.style.maxHeight = originalMaxHeight;
       el.style.overflowY = originalOverflowY;
     }
@@ -410,7 +413,7 @@ export default function ReportPreviewModal({
                 <h2 className="text-lg font-bold text-emerald-900 uppercase tracking-wide">📊 Comparativo de informes</h2>
                 <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
               </div>
-              <div className="pdf-avoid [&_.cmp-radar]:max-w-[440px] [&_.cmp-radar]:mx-auto">
+              <div className="[&_.cmp-radar]:max-w-[440px] [&_.cmp-radar]:mx-auto">
                 <RatingsAverageChart cards={matchCards} groups={groups} />
               </div>
             </section>

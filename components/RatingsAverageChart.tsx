@@ -141,7 +141,7 @@ export default function RatingsAverageChart({ cards: allCards, groups }: { cards
       </div>
 
       {allCards.length > 1 && (
-        <div className="mb-3">
+        <div className="mb-3 pdf-chips">
           <p className="text-xs text-muted mb-1">Informes incluidos (toca para quitar o agregar)</p>
           <div className="flex flex-wrap gap-1.5">
             {allCards
