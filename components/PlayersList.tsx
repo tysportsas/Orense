@@ -66,8 +66,8 @@ export default function PlayersList({ initialPlayers }: { initialPlayers: Player
 
   const filtered = useMemo(() => {
     const n = q.trim().toLowerCase();
-    if (!n) return players;
-    return players.filter((p) => p.nombre?.toLowerCase().includes(n) || p.club?.toLowerCase().includes(n));
+    const list = n ? players.filter((p) => p.nombre?.toLowerCase().includes(n) || p.club?.toLowerCase().includes(n)) : players;
+    return [...list].sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
   }, [q, players]);
 
   return (
