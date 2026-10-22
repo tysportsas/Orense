@@ -262,6 +262,15 @@ export default function ReportPreviewModal({
         allowTaint: true,
         logging: false,
         backgroundColor: '#ffffff',
+        onclone: (doc: Document) => {
+          // html2canvas desplaza el texto hacia abajo en cajas flex con bordes redondeados: se centra con block + line-height.
+          const st = doc.createElement('style');
+          st.textContent = `
+            .badge { display: inline-block !important; padding: 0 14px !important; line-height: 26px !important; height: 26px; text-align: center; vertical-align: middle; }
+            .pdf-center { display: block !important; text-align: center; }
+          `;
+          doc.head.appendChild(st);
+        },
         windowWidth: width,
         windowHeight: el.scrollHeight
       });
