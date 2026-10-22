@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { listReportsForPlayer, playerPhotoFrom } from '@/lib/reports';
-import { LEVELS, NACIONALIDADES, nivel, ageOf, fmtDate, fmtTs, shortVal, radarAxes, areaNotes, type Note, visibleSections, excelSerialDate } from '@/lib/formModel';
+import { LEVELS, NACIONALIDADES, nivel, ageOf, fmtDate, fmtTs, shortVal, radarAxes, areaNotes, caracSummary, type Note, visibleSections, excelSerialDate } from '@/lib/formModel';
 import Header from '@/components/Header';
 import PlayerDashboardClient from '@/components/PlayerDashboardClient';
 import { normalizeRole } from '@/lib/auth';
@@ -85,6 +85,7 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
         puesto={prof.puesto}
         lateralidad={prof.lateralidad}
         puestoReportId={prof.puestoReportId}
+        carac={caracSummary(reports)}
         posX={prof.posX}
         posY={prof.posY}
         base={(

@@ -76,6 +76,7 @@ export default function PlayerDashboardClient({
   posY,
   base,
   kpis,
+  carac,
   matchCards,
   groups
 }: {
@@ -89,6 +90,7 @@ export default function PlayerDashboardClient({
   posY?: number;
   base: [string, string][];
   kpis: [string, string][];
+  carac?: { puesto: string; titulo: string; desc: string; obs: string } | null;
   matchCards: MatchCard[];
   groups: Group[];
 }) {
@@ -160,6 +162,21 @@ export default function PlayerDashboardClient({
                 </div>
               ))}
             </div>
+            {carac && (
+              <div className="mt-4 bg-surface2 border border-line rounded-xl p-4">
+                <h4 className="font-display font-bold text-lg">Caracterización de {carac.puesto}</h4>
+                <p className="mt-1">
+                  <b>{carac.titulo}</b>
+                  {carac.desc && <span className="text-sm text-muted"> — {carac.desc}</span>}
+                </p>
+                {carac.obs && (
+                  <p className="text-sm mt-2 whitespace-pre-line">
+                    <b className="text-xs uppercase text-muted">Observación (informe N1): </b>
+                    {carac.obs}
+                  </p>
+                )}
+              </div>
+            )}
             <RatingsAverageChart cards={matchCards} groups={groups} />
           </div>
           <div className="flex flex-col items-center gap-1">

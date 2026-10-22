@@ -47,6 +47,7 @@ interface ReportPreviewModalProps {
   posY?: number;
   base: [string, string][];
   kpis: [string, string][];
+  carac?: { puesto: string; titulo: string; desc: string; obs: string } | null;
   matchCards: MatchCard[];
   groups: Group[];
 }
@@ -113,6 +114,7 @@ export default function ReportPreviewModal({
   posY,
   base,
   kpis,
+  carac,
   matchCards,
   groups
 }: ReportPreviewModalProps) {
@@ -405,6 +407,21 @@ export default function ReportPreviewModal({
               </div>
               <PositionPitch puesto={puesto} lateralidad={lateralidad} posX={posX} posY={posY} />
             </div>
+            {carac && (
+              <div className="mt-2 bg-white border border-gray-200 rounded-lg p-2 text-xs">
+                <p className="font-bold text-emerald-900 uppercase">Caracterización de {carac.puesto}</p>
+                <p className="mt-0.5 text-gray-800">
+                  <b>{carac.titulo}</b>
+                  {carac.desc && <span className="text-gray-600"> — {carac.desc}</span>}
+                </p>
+                {carac.obs && (
+                  <p className="mt-1 text-gray-700 whitespace-pre-line">
+                    <b>Observación (informe N1): </b>
+                    {carac.obs}
+                  </p>
+                )}
+              </div>
+            )}
           </section>
 
           {matchCards.length > 0 && (

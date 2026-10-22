@@ -416,6 +416,24 @@ export const caracFields = (d, carrilero) => {
   ];
 };
 
+export interface CaracSummary { puesto: string; titulo: string; desc: string; obs: string }
+
+/** Caracterización del puesto específico y su observación, tomadas del informe N1 más reciente que la tenga. */
+export function caracSummary(reports: { data: ReportData; created_at: string }[]): CaracSummary | null {
+  const n1 = reports
+    .filter((r) => nivel(r.data) === 1)
+    .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+  for (const r of n1) {
+    const p = String(r.data.puesto ?? '').trim().toUpperCase();
+    const val = String(r.data['car_' + p] ?? '').trim();
+    if (!p || !val) continue;
+    const list: string[][] = [...(CARAC[p] || []), ...(p === 'LATERAL' ? [CARRILERO] : [])];
+    const hit = list.find(([t]) => t.toUpperCase() === val.toUpperCase());
+    return { puesto: cap(p), titulo: val, desc: hit?.[1] ?? '', obs: String(r.data['car_obs_' + p] ?? '').trim() };
+  }
+  return null;
+}
+
 export const attFields = d => {
   const p = String(d.puesto ?? '').trim().toUpperCase();
   if (!p) return [];

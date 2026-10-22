@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { ReportRow } from '@/lib/reports';
 import { keyOf, deleteReport, getReport, signedPhotoUrl, listReportsForPlayer, playerPhotoFrom } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
-import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, nivel, NACIONALIDADES, ageOf, fmtTs, shortVal, radarAxes, areaNotes, visibleSections, excelSerialDate } from '@/lib/formModel';
+import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, nivel, NACIONALIDADES, ageOf, fmtTs, shortVal, radarAxes, areaNotes, caracSummary, visibleSections, excelSerialDate } from '@/lib/formModel';
 import ReportPreviewModal from './ReportPreviewModal';
 
 interface Props {
@@ -47,6 +47,7 @@ interface PreviewData {
   posY?: number;
   base: [string, string][];
   kpis: [string, string][];
+  carac?: { puesto: string; titulo: string; desc: string; obs: string } | null;
   matchCards: MatchCard[];
   groups: Group[];
 }
@@ -215,6 +216,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
         posY,
         base,
         kpis,
+        carac: caracSummary(playerReports),
         matchCards: matchCardsFormatted,
         groups
       });
@@ -681,6 +683,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
           posY={previewData.posY}
           base={previewData.base}
           kpis={previewData.kpis}
+          carac={previewData.carac}
           matchCards={previewData.matchCards}
           groups={previewData.groups}
         />
