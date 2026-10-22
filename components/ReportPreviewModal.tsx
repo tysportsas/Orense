@@ -120,6 +120,7 @@ export default function ReportPreviewModal({
 }: ReportPreviewModalProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [crest, setCrest] = useState('/orense-crest.png');
   const [photoLoading, setPhotoLoading] = useState(false);
   // Refs para leer estado actual sin stale closure en callbacks asíncronos
   const photoLoadingRef = useRef(false);
@@ -129,6 +130,15 @@ export default function ReportPreviewModal({
     photoLoadingRef.current = val;
     setPhotoLoading(val);
   }
+
+  useEffect(() => {
+    // El escudo se embebe como data URL para que aparezca en el PDF.
+    fetch('/orense-crest.png')
+      .then((r) => r.blob())
+      .then((b) => new Promise<string>((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.readAsDataURL(b); }))
+      .then(setCrest)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -345,7 +355,7 @@ export default function ReportPreviewModal({
             <div className="flex items-center gap-2 mb-2">
               <div className="flex-shrink-0">
                 <img 
-                  src="/orense-crest.png" 
+                  src={crest} 
                   alt="Escudo Orense" 
                   className="h-16 w-16 object-contain"
                 />
