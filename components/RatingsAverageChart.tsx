@@ -180,11 +180,9 @@ export default function RatingsAverageChart({ cards: allCards, groups }: { cards
           <p className="text-xs text-muted mb-1">Valoración final por informe (del más antiguo al más reciente)</p>
           <div className="flex items-end gap-2 h-28">
             {timeline.map((t) => (
-              <div key={t.id} className="flex-1 min-w-[28px] max-w-[64px] flex flex-col h-full" title={`${t.label}: ${t.score ?? 'sin dato'}`}>
+              <div key={t.id} className="flex-1 min-w-[28px] max-w-[64px] flex flex-col justify-end items-center h-full" title={`${t.label}: ${t.score ?? 'sin dato'}`}>
                 <span className="text-xs font-semibold text-center leading-4 h-4 block">{t.score ?? '—'}</span>
-                <div className="flex-1 flex items-end">
-                  <div className="w-full rounded-t bg-gold" style={{ height: `${((t.score ?? 0) / 5) * 100}%` }} />
-                </div>
+                <div className="w-full rounded-t bg-gold" style={{ height: `calc((100% - 16px) * ${(t.score ?? 0) / 5})` }} />
               </div>
             ))}
           </div>
