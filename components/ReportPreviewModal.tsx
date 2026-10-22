@@ -230,11 +230,21 @@ export default function ReportPreviewModal({
     el.style.maxHeight = 'none';
     el.style.overflowY = 'visible';
 
+    let pdfStyle: HTMLStyleElement | null = null;
     try {
       // Esperar a que todas las imágenes estáticas (logo, etc.) estén cargadas.
       await waitForImages(el);
 
       el.scrollTop = 0;
+      // Las fuentes web (Barlow) tienen métricas que html2canvas interpreta mal y desplaza el texto hacia abajo.
+      // Durante la captura se usa una fuente de sistema (antes de medir bloques, para que la paginación coincida).
+      pdfStyle = document.createElement('style');
+      pdfStyle.textContent = `
+        .pdf-capture, .pdf-capture * { font-family: Helvetica, Arial, sans-serif !important; letter-spacing: normal !important; }
+        .pdf-capture .badge { display: inline-block !important; padding: 0 14px !important; line-height: 24px !important; height: 26px; text-align: center; }
+      `;
+      document.head.appendChild(pdfStyle);
+      el.classList.add('pdf-capture');
       // Solo para el PDF: radar comparativo compacto para que el bloque quepa en la hoja 1.
       const cmp = Array.from(el.querySelectorAll<HTMLElement>('.cmp-radar'));
       const prevMax = cmp.map((n) => n.style.maxWidth);
@@ -262,15 +272,6 @@ export default function ReportPreviewModal({
         allowTaint: true,
         logging: false,
         backgroundColor: '#ffffff',
-        onclone: (doc: Document) => {
-          // html2canvas desplaza el texto hacia abajo en cajas flex con bordes redondeados: se centra con block + line-height.
-          const st = doc.createElement('style');
-          st.textContent = `
-            .badge { display: inline-block !important; padding: 0 14px !important; line-height: 26px !important; height: 26px; text-align: center; vertical-align: middle; }
-            .pdf-center { display: block !important; text-align: center; }
-          `;
-          doc.head.appendChild(st);
-        },
         windowWidth: width,
         windowHeight: el.scrollHeight
       });
@@ -313,6 +314,8 @@ export default function ReportPreviewModal({
       console.error('Error al generar PDF:', err);
       alert('Error al generar el PDF. Intenta de nuevo.');
     } finally {
+      pdfStyle?.remove();
+      el.classList.remove('pdf-capture');
       el.querySelectorAll<HTMLElement>('.cmp-radar').forEach((n) => (n.style.maxWidth = ''));
       el.querySelectorAll<HTMLElement>('.pdf-chips').forEach((n) => (n.style.display = ''));
       el.style.maxHeight = originalMaxHeight;
