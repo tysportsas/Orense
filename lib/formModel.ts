@@ -623,7 +623,7 @@ export const SECTIONS = [
       rate('ins_personal', 'Pasado personal', SC_INS, {short: 'Institucional · Pasado personal'}),
       rate('ins_deportivo', 'Pasado deportivo', SC_INS, {short: 'Institucional · Pasado deportivo'}),
       ...[['pres', 'Carga en presupuesto'], ['salario', 'Salario'], ['comisiones', 'Comisiones'], ['otros', 'Otros pagos'], ['total', 'Total operación']]
-        .map(([k, l]) => rate('ins_' + k, l, SC_PRES, {values: [2, 4, 6, 8, 10], short: 'Institucional · ' + l})),
+        .map(([k, l]) => rate('ins_' + k, l, SC_PRES, {short: 'Institucional · ' + l})),
       area('ins_obs', 'Observación', {short: 'Institucional · Observación'})
     ]
   },
