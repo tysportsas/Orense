@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { ReportRow } from '@/lib/reports';
 import { keyOf, signedPhotoUrl } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
-import { CATEGORIAS, OBSERVADORES } from '@/lib/formModel';
+import { CATEGORIAS, OBSERVADORES, LEVELS, nivel } from '@/lib/formModel';
 
 interface Props {
   initialReports: ReportRow[];
@@ -24,12 +24,14 @@ interface PlayerSummary {
   foto?: string;
   fotoUrl?: string;
   lastReportAt: string;
+  maxNivel: number;
 }
 
 export default function CampogramaClient({ initialReports }: Props) {
   const [selectedValoracion, setSelectedValoracion] = useState<string>('');
   const [selectedCategoria, setSelectedCategoria] = useState<string>('');
   const [selectedObservador, setSelectedObservador] = useState<string>('');
+  const [selectedNivel, setSelectedNivel] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Consolidar informes más recientes por jugador
@@ -61,6 +63,8 @@ export default function CampogramaClient({ initialReports }: Props) {
       
       let score = scoreNum > 0 ? String(scoreNum) : '—';
 
+      const reportNivel = nivel(d);
+
       if (!map.has(key)) {
         map.set(key, {
           playerKey: key,
@@ -74,7 +78,8 @@ export default function CampogramaClient({ initialReports }: Props) {
           observador: d.observador,
           foto: d.foto,
           fotoUrl: d.foto_url,
-          lastReportAt: r.created_at
+          lastReportAt: r.created_at,
+          maxNivel: reportNivel
         });
       } else {
         const existing = map.get(key)!;
@@ -88,6 +93,11 @@ export default function CampogramaClient({ initialReports }: Props) {
         if (scoreNum > existingScoreNum) {
           existing.valoracion = d.valoracion;
           existing.valScore = score;
+        }
+
+        // Guardamos el nivel máximo de informe que tiene el jugador
+        if (reportNivel > existing.maxNivel) {
+          existing.maxNivel = reportNivel;
         }
 
         // El resto de datos (club, foto, puesto) se actualizan con el informe más reciente
@@ -119,6 +129,10 @@ export default function CampogramaClient({ initialReports }: Props) {
       if (selectedObservador && p.observador !== selectedObservador) {
         return false;
       }
+      if (selectedNivel) {
+        const n = parseInt(selectedNivel);
+        if (p.maxNivel !== n) return false;
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesName = p.nombre.toLowerCase().includes(q);
@@ -127,7 +141,7 @@ export default function CampogramaClient({ initialReports }: Props) {
       }
       return true;
     });
-  }, [uniquePlayers, selectedValoracion, selectedCategoria, selectedObservador, searchQuery]);
+  }, [uniquePlayers, selectedValoracion, selectedCategoria, selectedObservador, selectedNivel, searchQuery]);
 
   // Agrupación por zonas específicas del campo
   const pitchGroups = useMemo(() => {
@@ -214,12 +228,13 @@ export default function CampogramaClient({ initialReports }: Props) {
               Visualización en terreno de juego con nombres y puntuaciones según el filtro de valoración activo.
             </p>
           </div>
-          {(selectedValoracion || selectedCategoria || selectedObservador || searchQuery) && (
+          {(selectedValoracion || selectedCategoria || selectedObservador || selectedNivel || searchQuery) && (
             <button
               onClick={() => {
                 setSelectedValoracion('');
                 setSelectedCategoria('');
                 setSelectedObservador('');
+                setSelectedNivel('');
                 setSearchQuery('');
               }}
               className="text-xs text-red-600 hover:text-red-800 font-bold underline"
@@ -229,7 +244,7 @@ export default function CampogramaClient({ initialReports }: Props) {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">Filtrar por Valoración</label>
             <select
@@ -273,6 +288,22 @@ export default function CampogramaClient({ initialReports }: Props) {
               {OBSERVADORES.map((o) => (
                 <option key={o} value={o}>
                   {o}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Nivel de informe</label>
+            <select
+              value={selectedNivel}
+              onChange={(e) => setSelectedNivel(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f3a22]"
+            >
+              <option value="">Todos los niveles</option>
+              {LEVELS.map((lv) => (
+                <option key={lv.n} value={String(lv.n)}>
+                  N{lv.n} {lv.name}
                 </option>
               ))}
             </select>
