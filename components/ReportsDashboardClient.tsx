@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { ReportRow } from '@/lib/reports';
 import { keyOf, deleteReport, getReport, signedPhotoUrl, listReportsForPlayer, playerPhotoFrom } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
-import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, nivel, NACIONALIDADES, ageOf, fmtTs, shortVal, radarAxes, areaNotes, caracSummary, visibleSections, excelSerialDate } from '@/lib/formModel';
+import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, POS, nivel, NACIONALIDADES, ageOf, fmtTs, shortVal, radarAxes, areaNotes, caracSummary, visibleSections, excelSerialDate } from '@/lib/formModel';
 import ReportPreviewModal from './ReportPreviewModal';
 
 interface Props {
@@ -70,6 +70,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
   const [selectedCategoria, setSelectedCategoria] = useState('');
   const [selectedNivel, setSelectedNivel] = useState('');
   const [selectedValoracion, setSelectedValoracion] = useState('');
+  const [selectedPuesto, setSelectedPuesto] = useState('');
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
@@ -247,12 +248,13 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
       if (selectedCategoria && d.categoria !== selectedCategoria) return false;
       if (selectedNivel && nivel(d) !== Number(selectedNivel.slice(1))) return false;
       if (selectedValoracion && (!d.valoracion || !d.valoracion.includes(selectedValoracion))) return false;
+      if (selectedPuesto && (d.puesto || '').toUpperCase() !== selectedPuesto) return false;
 
       return true;
     });
-  }, [reports, search, selectedObservador, selectedCategoria, selectedNivel, selectedValoracion]);
+  }, [reports, search, selectedObservador, selectedCategoria, selectedNivel, selectedValoracion, selectedPuesto]);
 
-  const hasActiveFilters = Boolean(search || selectedObservador || selectedCategoria || selectedNivel || selectedValoracion);
+  const hasActiveFilters = Boolean(search || selectedObservador || selectedCategoria || selectedNivel || selectedValoracion || selectedPuesto);
 
   // 2. Estadísticas (reflejan el filtro activo; si no hay filtros, son las globales)
   const totalReports = filteredReports.length;
@@ -480,6 +482,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
                 setSelectedCategoria('');
                 setSelectedNivel('');
                 setSelectedValoracion('');
+                setSelectedPuesto('');
               }}
               className="text-xs text-red-600 hover:text-red-800 font-semibold underline"
             >
@@ -488,7 +491,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           {/* Búsqueda por texto */}
           <div className="lg:col-span-1">
             <input
@@ -498,6 +501,20 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
               onChange={e => setSearch(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0f3a22]"
             />
+          </div>
+
+          {/* Filtro Posición */}
+          <div>
+            <select
+              value={selectedPuesto}
+              onChange={e => setSelectedPuesto(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0f3a22]"
+            >
+              <option value="">Todas las posiciones</option>
+              {POS.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
           </div>
 
           {/* Filtro Observador */}

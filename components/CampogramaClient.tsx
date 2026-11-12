@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { ReportRow } from '@/lib/reports';
 import { keyOf, signedPhotoUrl } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
-import { CATEGORIAS, OBSERVADORES, LEVELS, nivel } from '@/lib/formModel';
+import { CATEGORIAS, OBSERVADORES, LEVELS, POS, nivel } from '@/lib/formModel';
 
 interface Props {
   initialReports: ReportRow[];
@@ -32,6 +32,7 @@ export default function CampogramaClient({ initialReports }: Props) {
   const [selectedCategoria, setSelectedCategoria] = useState<string>('');
   const [selectedObservador, setSelectedObservador] = useState<string>('');
   const [selectedNivel, setSelectedNivel] = useState<string>('');
+  const [selectedPuesto, setSelectedPuesto] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Consolidar informes más recientes por jugador
@@ -133,6 +134,9 @@ export default function CampogramaClient({ initialReports }: Props) {
         const n = parseInt(selectedNivel);
         if (p.maxNivel !== n) return false;
       }
+      if (selectedPuesto && p.puesto !== selectedPuesto) {
+        return false;
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesName = p.nombre.toLowerCase().includes(q);
@@ -141,7 +145,7 @@ export default function CampogramaClient({ initialReports }: Props) {
       }
       return true;
     });
-  }, [uniquePlayers, selectedValoracion, selectedCategoria, selectedObservador, selectedNivel, searchQuery]);
+  }, [uniquePlayers, selectedValoracion, selectedCategoria, selectedObservador, selectedNivel, selectedPuesto, searchQuery]);
 
   // Agrupación por zonas específicas del campo
   const pitchGroups = useMemo(() => {
@@ -228,13 +232,14 @@ export default function CampogramaClient({ initialReports }: Props) {
               Visualización en terreno de juego con nombres y puntuaciones según el filtro de valoración activo.
             </p>
           </div>
-          {(selectedValoracion || selectedCategoria || selectedObservador || selectedNivel || searchQuery) && (
+          {(selectedValoracion || selectedCategoria || selectedObservador || selectedNivel || selectedPuesto || searchQuery) && (
             <button
               onClick={() => {
                 setSelectedValoracion('');
                 setSelectedCategoria('');
                 setSelectedObservador('');
                 setSelectedNivel('');
+                setSelectedPuesto('');
                 setSearchQuery('');
               }}
               className="text-xs text-red-600 hover:text-red-800 font-bold underline"
@@ -244,7 +249,7 @@ export default function CampogramaClient({ initialReports }: Props) {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">Filtrar por Valoración</label>
             <select
@@ -272,6 +277,22 @@ export default function CampogramaClient({ initialReports }: Props) {
               {CATEGORIAS.map((c) => (
                 <option key={c} value={c}>
                   {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Posición</label>
+            <select
+              value={selectedPuesto}
+              onChange={(e) => setSelectedPuesto(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f3a22]"
+            >
+              <option value="">Todas las posiciones</option>
+              {POS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
                 </option>
               ))}
             </select>
