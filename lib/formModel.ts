@@ -271,6 +271,7 @@ export const SC_FIS = ['Nada acorde a su posición','Desequilibrado','Poco acord
 export const SC_PRES = ['Crítico','Poco conveniente','Conveniente pero no fácil','Conveniente con posibilidad','Muy posible y conveniente'];
 
 export const POS = ['ARQUERO','LATERAL','CENTRAL','MEDIOCENTRO','INTERIOR','EXTREMO','MEDIAPUNTA','PUNTA'];
+export const LATERALIDAD = ['DERECHO', 'IZQUIERDO', 'AMBIDIESTRO'];
 
 export const CARAC = {
   ARQUERO:[

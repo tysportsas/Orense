@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { ReportRow } from '@/lib/reports';
 import { keyOf, signedPhotoUrl } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
-import { CATEGORIAS, OBSERVADORES, LEVELS, POS, nivel } from '@/lib/formModel';
+import { CATEGORIAS, OBSERVADORES, LEVELS, POS, LATERALIDAD, NACIONALIDADES, nivel } from '@/lib/formModel';
 
 interface Props {
   initialReports: ReportRow[];
@@ -18,6 +18,7 @@ interface PlayerSummary {
   categoria?: string;
   puesto: string;
   lateralidad?: string;
+  nacionalidad?: string;
   valoracion?: string;
   valScore: string;
   observador?: string;
@@ -33,6 +34,8 @@ export default function CampogramaClient({ initialReports }: Props) {
   const [selectedObservador, setSelectedObservador] = useState<string>('');
   const [selectedNivel, setSelectedNivel] = useState<string>('');
   const [selectedPuesto, setSelectedPuesto] = useState<string>('');
+  const [selectedNacionalidad, setSelectedNacionalidad] = useState<string>('');
+  const [selectedLateralidad, setSelectedLateralidad] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Consolidar informes más recientes por jugador
@@ -74,6 +77,7 @@ export default function CampogramaClient({ initialReports }: Props) {
           categoria: d.categoria,
           puesto: (d.puesto || 'SIN PUESTO').toUpperCase(),
           lateralidad: d.lateralidad,
+          nacionalidad: d.nacionalidad,
           valoracion: d.valoracion,
           valScore: score,
           observador: d.observador,
@@ -109,6 +113,7 @@ export default function CampogramaClient({ initialReports }: Props) {
           if (d.club) existing.club = d.club;
           if (d.categoria) existing.categoria = d.categoria;
           if (d.lateralidad) existing.lateralidad = d.lateralidad;
+          if (d.nacionalidad) existing.nacionalidad = d.nacionalidad;
           if (d.foto) existing.foto = d.foto;
           if (d.foto_url) existing.fotoUrl = d.foto_url;
         }
@@ -137,6 +142,12 @@ export default function CampogramaClient({ initialReports }: Props) {
       if (selectedPuesto && p.puesto !== selectedPuesto) {
         return false;
       }
+      if (selectedNacionalidad && p.nacionalidad !== selectedNacionalidad) {
+        return false;
+      }
+      if (selectedLateralidad && (p.lateralidad || '').toUpperCase() !== selectedLateralidad) {
+        return false;
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesName = p.nombre.toLowerCase().includes(q);
@@ -145,7 +156,7 @@ export default function CampogramaClient({ initialReports }: Props) {
       }
       return true;
     });
-  }, [uniquePlayers, selectedValoracion, selectedCategoria, selectedObservador, selectedNivel, selectedPuesto, searchQuery]);
+  }, [uniquePlayers, selectedValoracion, selectedCategoria, selectedObservador, selectedNivel, selectedPuesto, selectedNacionalidad, selectedLateralidad, searchQuery]);
 
   // Agrupación por zonas específicas del campo
   const pitchGroups = useMemo(() => {
@@ -232,7 +243,7 @@ export default function CampogramaClient({ initialReports }: Props) {
               Visualización en terreno de juego con nombres y puntuaciones según el filtro de valoración activo.
             </p>
           </div>
-          {(selectedValoracion || selectedCategoria || selectedObservador || selectedNivel || selectedPuesto || searchQuery) && (
+          {(selectedValoracion || selectedCategoria || selectedObservador || selectedNivel || selectedPuesto || selectedNacionalidad || selectedLateralidad || searchQuery) && (
             <button
               onClick={() => {
                 setSelectedValoracion('');
@@ -240,6 +251,8 @@ export default function CampogramaClient({ initialReports }: Props) {
                 setSelectedObservador('');
                 setSelectedNivel('');
                 setSelectedPuesto('');
+                setSelectedNacionalidad('');
+                setSelectedLateralidad('');
                 setSearchQuery('');
               }}
               className="text-xs text-red-600 hover:text-red-800 font-bold underline"
@@ -249,34 +262,34 @@ export default function CampogramaClient({ initialReports }: Props) {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">Filtrar por Valoración</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Nacionalidad</label>
             <select
-              value={selectedValoracion}
-              onChange={(e) => setSelectedValoracion(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-bold border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f3a22] bg-emerald-50/60 text-emerald-950"
+              value={selectedNacionalidad}
+              onChange={(e) => setSelectedNacionalidad(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f3a22]"
             >
-              <option value="">⭐ Todas las valoraciones</option>
-              <option value="FICHAR">5 · FICHAR (Prioritarios)</option>
-              <option value="INTERESANTE">4 · INTERESANTE</option>
-              <option value="SEGUIR VIENDO">3 · SEGUIR VIENDO</option>
-              <option value="DESCARTAR">2 · DESCARTAR</option>
-              <option value="SIN VER">1 · SIN VER</option>
+              <option value="">Todas las nacionalidades</option>
+              {NACIONALIDADES.map((n) => (
+                <option key={n.v} value={n.v}>
+                  {n.l}
+                </option>
+              ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">Categoría</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Lateralidad</label>
             <select
-              value={selectedCategoria}
-              onChange={(e) => setSelectedCategoria(e.target.value)}
+              value={selectedLateralidad}
+              onChange={(e) => setSelectedLateralidad(e.target.value)}
               className="w-full px-3 py-2 text-xs border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f3a22]"
             >
-              <option value="">Todas las categorías</option>
-              {CATEGORIAS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              <option value="">Toda lateralidad</option>
+              {LATERALIDAD.map((l) => (
+                <option key={l} value={l}>
+                  {l}
                 </option>
               ))}
             </select>
@@ -315,6 +328,22 @@ export default function CampogramaClient({ initialReports }: Props) {
           </div>
 
           <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Categoría</label>
+            <select
+              value={selectedCategoria}
+              onChange={(e) => setSelectedCategoria(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f3a22]"
+            >
+              <option value="">Todas las categorías</option>
+              {CATEGORIAS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">Nivel de informe</label>
             <select
               value={selectedNivel}
@@ -327,6 +356,22 @@ export default function CampogramaClient({ initialReports }: Props) {
                   N{lv.n} {lv.name}
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Filtrar por Valoración</label>
+            <select
+              value={selectedValoracion}
+              onChange={(e) => setSelectedValoracion(e.target.value)}
+              className="w-full px-3 py-2 text-xs font-bold border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f3a22] bg-emerald-50/60 text-emerald-950"
+            >
+              <option value="">⭐ Todas las valoraciones</option>
+              <option value="FICHAR">5 · FICHAR (Prioritarios)</option>
+              <option value="INTERESANTE">4 · INTERESANTE</option>
+              <option value="SEGUIR VIENDO">3 · SEGUIR VIENDO</option>
+              <option value="DESCARTAR">2 · DESCARTAR</option>
+              <option value="SIN VER">1 · SIN VER</option>
             </select>
           </div>
 
