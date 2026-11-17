@@ -32,10 +32,10 @@ function average(values: (number | null)[]) {
 
 function metricsOf(cards: MatchCard[]) {
   return [
-    { label: 'Valoración final', values: cards.map((c) => scoreOf(c.valoracion)) },
-    { label: 'Valoración del partido', values: cards.map((c) => scoreOf(c.val_partido)) },
-    { label: 'Proyección', values: cards.map((c) => scoreOf(c.val_proy)) },
-    { label: 'Atributos', values: cards.map((c) => c.avg) }
+    { label: 'Valoración final', weight: 0.25, values: cards.map((c) => scoreOf(c.valoracion)) },
+    { label: 'Valoración del partido', weight: 0.15, values: cards.map((c) => scoreOf(c.val_partido)) },
+    { label: 'Rendimiento / proyección', weight: 0.25, values: cards.map((c) => scoreOf(c.val_proy)) },
+    { label: 'Atributos', weight: 0.35, values: cards.map((c) => c.avg) }
   ].map((m) => ({ ...m, avg: average(m.values), count: m.values.filter((n) => n != null).length }));
 }
 
@@ -69,6 +69,12 @@ export default function RatingsAverageChart({ cards: allCards, groups }: { cards
   const [mode, setMode] = useState<'all' | 'type' | 'report'>('all');
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const cards = allCards.filter((c) => !excluded.has(c.id));
+  const metrics = metricsOf(cards);
+  const hasCompleteScore = metrics.every((m) => m.avg != null);
+  const weightedScore = hasCompleteScore
+    ? metrics.reduce((total, metric) => total + metric.avg! * metric.weight, 0)
+    : null;
+  const displayScore = weightedScore == null ? null : Math.round((weightedScore + Number.EPSILON) * 100) / 100;
   const toggle = (id: string) =>
     setExcluded((prev) => {
       const next = new Set(prev);
@@ -168,7 +174,18 @@ export default function RatingsAverageChart({ cards: allCards, groups }: { cards
       {cards.length === 0 ? (
         <p className="text-sm text-muted">Selecciona al menos un informe.</p>
       ) : mode === 'all' ? (
-        <AverageBars cards={cards} />
+        <>
+          <section className="mb-4 rounded-xl border border-line bg-white/70 p-3" aria-label="Orense Score">
+            <p className="text-xs uppercase tracking-wide text-muted">Orense Score</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="font-display text-4xl font-bold leading-tight">
+                {displayScore == null ? '—' : displayScore.toFixed(2)}
+                <span className="ml-1 text-base font-semibold text-muted">/ 5</span>
+              </p>
+            </div>
+          </section>
+          <AverageBars cards={cards} />
+        </>
       ) : axes.length < 3 ? (
         <p className="text-sm text-muted">No hay suficientes datos para el comparativo (se necesitan al menos 3 criterios).</p>
       ) : (
