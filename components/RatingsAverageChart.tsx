@@ -39,6 +39,13 @@ function metricsOf(cards: MatchCard[]) {
   ].map((m) => ({ ...m, avg: average(m.values), count: m.values.filter((n) => n != null).length }));
 }
 
+function scoreBandOf(score: number) {
+  if (score >= 4) return { label: 'Muy bueno', color: '#14532d' };
+  if (score >= 3.75) return { label: 'Bueno', color: '#16a34a' };
+  if (score >= 3.25) return { label: 'Interesante', color: '#f97316' };
+  return { label: 'Descartado', color: '#dc2626' };
+}
+
 function AverageBars({ cards }: { cards: MatchCard[] }) {
   return (
     <div className="grid gap-2">
@@ -75,6 +82,7 @@ export default function RatingsAverageChart({ cards: allCards, groups }: { cards
     ? metrics.reduce((total, metric) => total + metric.avg! * metric.weight, 0)
     : null;
   const displayScore = weightedScore == null ? null : Math.round((weightedScore + Number.EPSILON) * 100) / 100;
+  const scoreBand = displayScore == null ? null : scoreBandOf(displayScore);
   const toggle = (id: string) =>
     setExcluded((prev) => {
       const next = new Set(prev);
@@ -177,11 +185,12 @@ export default function RatingsAverageChart({ cards: allCards, groups }: { cards
         <>
           <section className="mb-4 rounded-xl border border-line bg-white/70 p-3" aria-label="Orense Score">
             <p className="text-xs uppercase tracking-wide text-muted">Orense Score</p>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-baseline gap-2">
               <p className="font-display text-4xl font-bold leading-tight">
-                {displayScore == null ? '—' : displayScore.toFixed(2)}
+                <span style={{ color: scoreBand?.color }}>{displayScore == null ? '—' : displayScore.toFixed(2)}</span>
                 <span className="ml-1 text-base font-semibold text-muted">/ 5</span>
               </p>
+              {scoreBand && <span className="text-lg font-semibold" style={{ color: scoreBand.color }}>({scoreBand.label})</span>}
             </div>
           </section>
           <AverageBars cards={cards} />
