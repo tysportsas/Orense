@@ -7,6 +7,7 @@ import type { ReportRow } from '@/lib/reports';
 import { keyOf, deleteReport, getReport, signedPhotoUrl, listReportsForPlayer, playerPhotoFrom } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
 import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, POS, LATERALIDAD, nivel, NACIONALIDADES, ageOf, fmtTs, shortVal, radarAxes, areaNotes, caracSummary, visibleSections, excelSerialDate } from '@/lib/formModel';
+import { ORENSE_SCORE_FILTERS, matchesOrenseScoreBand, orenseScoreBandOf, orenseScoresByPlayer } from '@/lib/orenseScore';
 import ReportPreviewModal from './ReportPreviewModal';
 
 interface Props {
@@ -73,6 +74,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
   const [selectedPuesto, setSelectedPuesto] = useState('');
   const [selectedNacionalidad, setSelectedNacionalidad] = useState('');
   const [selectedLateralidad, setSelectedLateralidad] = useState('');
+  const [selectedOrenseScore, setSelectedOrenseScore] = useState('');
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
@@ -231,6 +233,8 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
     }
   }
 
+  const orenseScoreByPlayer = useMemo(() => orenseScoresByPlayer(reports), [reports]);
+
   // 1. Informes filtrados (se calculan primero para que los KPIs reflejen el filtro activo)
   const filteredReports = useMemo(() => {
     return reports.filter(r => {
@@ -253,12 +257,13 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
       if (selectedPuesto && (d.puesto || '').toUpperCase() !== selectedPuesto) return false;
       if (selectedNacionalidad && d.nacionalidad !== selectedNacionalidad) return false;
       if (selectedLateralidad && (d.lateralidad || '').toUpperCase() !== selectedLateralidad) return false;
+      if (!matchesOrenseScoreBand(orenseScoreByPlayer.get(keyOf(d)) ?? null, selectedOrenseScore)) return false;
 
       return true;
     });
-  }, [reports, search, selectedObservador, selectedCategoria, selectedNivel, selectedValoracion, selectedPuesto, selectedNacionalidad, selectedLateralidad]);
+  }, [reports, search, selectedObservador, selectedCategoria, selectedNivel, selectedValoracion, selectedPuesto, selectedNacionalidad, selectedLateralidad, selectedOrenseScore, orenseScoreByPlayer]);
 
-  const hasActiveFilters = Boolean(search || selectedObservador || selectedCategoria || selectedNivel || selectedValoracion || selectedPuesto || selectedNacionalidad || selectedLateralidad);
+  const hasActiveFilters = Boolean(search || selectedObservador || selectedCategoria || selectedNivel || selectedValoracion || selectedPuesto || selectedNacionalidad || selectedLateralidad || selectedOrenseScore);
 
   // 2. Estadísticas (reflejan el filtro activo; si no hay filtros, son las globales)
   const totalReports = filteredReports.length;
@@ -489,6 +494,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
                 setSelectedPuesto('');
                 setSelectedNacionalidad('');
                 setSelectedLateralidad('');
+                setSelectedOrenseScore('');
               }}
               className="text-xs text-red-600 hover:text-red-800 font-semibold underline"
             >
@@ -609,6 +615,21 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
               <option value="DESCARTAR">2 · DESCARTAR</option>
             </select>
           </div>
+
+          {/* Filtro Orense Score */}
+          <div>
+            <select
+              value={selectedOrenseScore}
+              onChange={e => setSelectedOrenseScore(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0f3a22]"
+              aria-label="Filtrar por Orense Score"
+            >
+              <option value="">Todos los Orense Score</option>
+              {ORENSE_SCORE_FILTERS.map((band) => (
+                <option key={band.value} value={band.value}>{band.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* 4. Tabla de Informes */}
@@ -627,6 +648,7 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
                   <th className="px-4 py-3">Puesto / Cat.</th>
                   <th className="px-4 py-3">Tipo de Informe</th>
                   <th className="px-4 py-3">Valoración</th>
+                  <th className="px-4 py-3">Orense Score</th>
                   <th className="px-4 py-3">Observador</th>
                   <th className="px-4 py-3 text-right">Acciones</th>
                 </tr>
@@ -635,6 +657,8 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
                 {filteredReports.map(r => {
                   const d = r.data;
                   const pKey = keyOf(d);
+                  const orenseScore = orenseScoreByPlayer.get(pKey) ?? null;
+                  const scoreBand = orenseScore == null ? null : orenseScoreBandOf(orenseScore);
                   return (
                     <tr key={r.id} className="hover:bg-gray-50/80 transition-colors">
                       <td className="px-4 py-3.5 whitespace-nowrap text-xs text-gray-500 font-mono">
@@ -668,6 +692,16 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
 
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         {renderValBadge(d.valoracion)}
+                      </td>
+
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        {scoreBand ? (
+                          <span className="font-semibold" style={{ color: scoreBand.color }}>
+                            {orenseScore?.toFixed(2)} <span className="text-xs">({scoreBand.label})</span>
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
                       </td>
 
                       <td className="px-4 py-3.5 text-xs text-gray-600 whitespace-nowrap">

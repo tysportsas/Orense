@@ -6,6 +6,7 @@ import type { ReportRow } from '@/lib/reports';
 import { keyOf, signedPhotoUrl } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
 import { CATEGORIAS, OBSERVADORES, LEVELS, POS, LATERALIDAD, NACIONALIDADES, nivel } from '@/lib/formModel';
+import { ORENSE_SCORE_FILTERS, matchesOrenseScoreBand, orenseScoresByPlayer } from '@/lib/orenseScore';
 
 interface Props {
   initialReports: ReportRow[];
@@ -26,10 +27,12 @@ interface PlayerSummary {
   fotoUrl?: string;
   lastReportAt: string;
   maxNivel: number;
+  orenseScore: number | null;
 }
 
 export default function CampogramaClient({ initialReports }: Props) {
   const [selectedValoracion, setSelectedValoracion] = useState<string>('');
+  const [selectedOrenseScore, setSelectedOrenseScore] = useState<string>('');
   const [selectedCategoria, setSelectedCategoria] = useState<string>('');
   const [selectedObservador, setSelectedObservador] = useState<string>('');
   const [selectedNivel, setSelectedNivel] = useState<string>('');
@@ -37,6 +40,8 @@ export default function CampogramaClient({ initialReports }: Props) {
   const [selectedNacionalidad, setSelectedNacionalidad] = useState<string>('');
   const [selectedLateralidad, setSelectedLateralidad] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const orenseScoreByPlayer = useMemo(() => orenseScoresByPlayer(initialReports), [initialReports]);
 
   // Consolidar informes más recientes por jugador
   const uniquePlayers = useMemo(() => {
@@ -84,7 +89,8 @@ export default function CampogramaClient({ initialReports }: Props) {
           foto: d.foto,
           fotoUrl: d.foto_url,
           lastReportAt: r.created_at,
-          maxNivel: reportNivel
+          maxNivel: reportNivel,
+          orenseScore: orenseScoreByPlayer.get(key) ?? null
         });
       } else {
         const existing = map.get(key)!;
@@ -121,12 +127,15 @@ export default function CampogramaClient({ initialReports }: Props) {
     });
 
     return Array.from(map.values());
-  }, [initialReports]);
+  }, [initialReports, orenseScoreByPlayer]);
 
   // Filtrado de jugadores
   const filteredPlayers = useMemo(() => {
     return uniquePlayers.filter((p) => {
       if (selectedValoracion && (!p.valoracion || !p.valoracion.includes(selectedValoracion))) {
+        return false;
+      }
+      if (!matchesOrenseScoreBand(p.orenseScore, selectedOrenseScore)) {
         return false;
       }
       if (selectedCategoria && p.categoria !== selectedCategoria) {
@@ -156,7 +165,7 @@ export default function CampogramaClient({ initialReports }: Props) {
       }
       return true;
     });
-  }, [uniquePlayers, selectedValoracion, selectedCategoria, selectedObservador, selectedNivel, selectedPuesto, selectedNacionalidad, selectedLateralidad, searchQuery]);
+  }, [uniquePlayers, selectedValoracion, selectedOrenseScore, selectedCategoria, selectedObservador, selectedNivel, selectedPuesto, selectedNacionalidad, selectedLateralidad, searchQuery]);
 
   // Agrupación por zonas específicas del campo
   const pitchGroups = useMemo(() => {
@@ -243,10 +252,11 @@ export default function CampogramaClient({ initialReports }: Props) {
               Visualización en terreno de juego con nombres y puntuaciones según el filtro de valoración activo.
             </p>
           </div>
-          {(selectedValoracion || selectedCategoria || selectedObservador || selectedNivel || selectedPuesto || selectedNacionalidad || selectedLateralidad || searchQuery) && (
+          {(selectedValoracion || selectedOrenseScore || selectedCategoria || selectedObservador || selectedNivel || selectedPuesto || selectedNacionalidad || selectedLateralidad || searchQuery) && (
             <button
               onClick={() => {
                 setSelectedValoracion('');
+                setSelectedOrenseScore('');
                 setSelectedCategoria('');
                 setSelectedObservador('');
                 setSelectedNivel('');
@@ -372,6 +382,22 @@ export default function CampogramaClient({ initialReports }: Props) {
               <option value="SEGUIR VIENDO">3 · SEGUIR VIENDO</option>
               <option value="DESCARTAR">2 · DESCARTAR</option>
               <option value="SIN VER">1 · SIN VER</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Filtrar por Orense Score</label>
+            <select
+              value={selectedOrenseScore}
+              onChange={(e) => setSelectedOrenseScore(e.target.value)}
+              className="w-full px-3 py-2 text-xs font-bold border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0f3a22] bg-emerald-50/60 text-emerald-950"
+            >
+              <option value="">Todos los Orense Score</option>
+              {ORENSE_SCORE_FILTERS.map((band) => (
+                <option key={band.value} value={band.value}>
+                  {band.label}
+                </option>
+              ))}
             </select>
           </div>
 

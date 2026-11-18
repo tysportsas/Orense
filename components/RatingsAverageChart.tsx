@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import CompareRadarChart, { type CompareSeries } from './CompareRadarChart';
+import { ORENSE_SCORE_WEIGHTS, orenseScoreBandOf, orenseScoreFromMetrics } from '@/lib/orenseScore';
 
 interface MatchCard {
   id: string;
@@ -32,18 +33,11 @@ function average(values: (number | null)[]) {
 
 function metricsOf(cards: MatchCard[]) {
   return [
-    { label: 'Valoración final', weight: 0.25, values: cards.map((c) => scoreOf(c.valoracion)) },
-    { label: 'Valoración del partido', weight: 0.15, values: cards.map((c) => scoreOf(c.val_partido)) },
-    { label: 'Rendimiento / proyección', weight: 0.25, values: cards.map((c) => scoreOf(c.val_proy)) },
-    { label: 'Atributos', weight: 0.35, values: cards.map((c) => c.avg) }
+    { label: 'Valoración final', weight: ORENSE_SCORE_WEIGHTS.finalRating, values: cards.map((c) => scoreOf(c.valoracion)) },
+    { label: 'Valoración del partido', weight: ORENSE_SCORE_WEIGHTS.matchRating, values: cards.map((c) => scoreOf(c.val_partido)) },
+    { label: 'Rendimiento / proyección', weight: ORENSE_SCORE_WEIGHTS.performanceRating, values: cards.map((c) => scoreOf(c.val_proy)) },
+    { label: 'Atributos', weight: ORENSE_SCORE_WEIGHTS.attributes, values: cards.map((c) => c.avg) }
   ].map((m) => ({ ...m, avg: average(m.values), count: m.values.filter((n) => n != null).length }));
-}
-
-function scoreBandOf(score: number) {
-  if (score >= 4) return { label: 'Muy bueno', color: '#14532d' };
-  if (score >= 3.75) return { label: 'Bueno', color: '#16a34a' };
-  if (score >= 3.25) return { label: 'Interesante', color: '#f97316' };
-  return { label: 'Descartado', color: '#dc2626' };
 }
 
 function AverageBars({ cards }: { cards: MatchCard[] }) {
@@ -77,12 +71,13 @@ export default function RatingsAverageChart({ cards: allCards, groups }: { cards
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const cards = allCards.filter((c) => !excluded.has(c.id));
   const metrics = metricsOf(cards);
-  const hasCompleteScore = metrics.every((m) => m.avg != null);
-  const weightedScore = hasCompleteScore
-    ? metrics.reduce((total, metric) => total + metric.avg! * metric.weight, 0)
-    : null;
-  const displayScore = weightedScore == null ? null : Math.round((weightedScore + Number.EPSILON) * 100) / 100;
-  const scoreBand = displayScore == null ? null : scoreBandOf(displayScore);
+  const displayScore = orenseScoreFromMetrics({
+    finalRating: metrics[0].avg,
+    matchRating: metrics[1].avg,
+    performanceRating: metrics[2].avg,
+    attributes: metrics[3].avg
+  });
+  const scoreBand = displayScore == null ? null : orenseScoreBandOf(displayScore);
   const toggle = (id: string) =>
     setExcluded((prev) => {
       const next = new Set(prev);
