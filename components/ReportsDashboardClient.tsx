@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { ReportRow } from '@/lib/reports';
 import { keyOf, deleteReport, getReport, signedPhotoUrl, listReportsForPlayer, playerPhotoFrom } from '@/lib/reports';
 import { createClient } from '@/lib/supabase/client';
-import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, POS, LATERALIDAD, nivel, NACIONALIDADES, ageOf, fmtTs, shortVal, radarAxes, areaNotes, caracSummary, visibleSections, excelSerialDate } from '@/lib/formModel';
+import { fmtDate, LEVELS, VALORACION, CATEGORIAS, OBSERVADORES, POS, LATERALIDAD, nivel, NACIONALIDADES, ageOf, fmtTs, shortVal, radarAxes, areaNotes, caracSummary, visibleSections, excelSerialDate, type CaracSummary } from '@/lib/formModel';
 import { ORENSE_SCORE_FILTERS, matchesOrenseScoreBand, orenseScoreBandOf, orenseScoresByPlayer } from '@/lib/orenseScore';
 import ReportPreviewModal from './ReportPreviewModal';
 
@@ -34,7 +34,7 @@ interface MatchCard {
 interface Group {
   id: string;
   title: string;
-  series: { id: string; label: string; axes: { label: string; value: number; text: string }[]; nivel?: string; obs?: { label: string; text: string }[] }[];
+  series: { id: string; label: string; axes: { label: string; value: number; text: string }[]; nivel?: string; observador?: string; obs?: { label: string; text: string }[] }[];
 }
 
 interface PreviewData {
@@ -48,7 +48,7 @@ interface PreviewData {
   posY?: number;
   base: [string, string][];
   kpis: [string, string][];
-  carac?: { puesto: string; titulo: string; desc: string; obs: string } | null;
+  carac?: CaracSummary | null;
   matchCards: MatchCard[];
   groups: Group[];
 }
@@ -204,7 +204,8 @@ export default function ReportsDashboardClient({ initialReports }: Props) {
               label: `${date ? fmtDate(date) : 'Sin fecha'}, ${match}`,
               axes: s.axes,
               obs: s.obs,
-              nivel: LEVELS[nivel(s.report.data) - 1]?.short
+              nivel: LEVELS[nivel(s.report.data) - 1]?.short,
+              observador: s.report.data.observador
             };
           })
         };

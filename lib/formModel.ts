@@ -417,22 +417,47 @@ export const caracFields = (d, carrilero) => {
   ];
 };
 
-export interface CaracSummary { puesto: string; titulo: string; desc: string; obs: string }
+export interface CaracEntry {
+  id: string;
+  puesto: string;
+  titulo: string;
+  desc: string;
+  obs: string;
+  observador: string;
+  fecha: string;
+}
 
-/** Caracterización del puesto específico y su observación, tomadas del informe N1 más reciente que la tenga. */
-export function caracSummary(reports: { data: ReportData; created_at: string }[]): CaracSummary | null {
-  const n1 = reports
-    .filter((r) => nivel(r.data) === 1)
-    .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
-  for (const r of n1) {
-    const p = String(r.data.puesto ?? '').trim().toUpperCase();
-    const val = String(r.data['car_' + p] ?? '').trim();
-    if (!p || !val) continue;
-    const list: string[][] = [...(CARAC[p] || []), ...(p === 'LATERAL' ? [CARRILERO] : [])];
-    const hit = list.find(([t]) => t.toUpperCase() === val.toUpperCase());
-    return { puesto: cap(p), titulo: val, desc: hit?.[1] ?? '', obs: String(r.data['car_obs_' + p] ?? '').trim() };
-  }
-  return null;
+export interface CaracSummary {
+  entries: CaracEntry[];
+}
+
+/** Reúne la caracterización y observación registradas por cada scout. */
+export function caracSummary(reports: { id: string; data: ReportData; created_at: string }[]): CaracSummary | null {
+  const entries = reports
+    .slice()
+    .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
+    .flatMap((report) => {
+      const p = String(report.data.puesto ?? '').trim().toUpperCase();
+      if (!p) return [];
+
+      const titulo = String(report.data['car_' + p] ?? report.data['car_' + p.toLowerCase()] ?? '').trim();
+      const obs = String(report.data['car_obs_' + p] ?? report.data['car_obs_' + p.toLowerCase()] ?? '').trim();
+      if (!titulo && !obs) return [];
+
+      const list: string[][] = [...(CARAC[p] || []), ...(p === 'LATERAL' ? [CARRILERO] : [])];
+      const hit = list.find(([characteristic]) => characteristic.toUpperCase() === titulo.toUpperCase());
+      return [{
+        id: report.id,
+        puesto: cap(p),
+        titulo: titulo || 'Sin valoración',
+        desc: hit?.[1] ?? '',
+        obs,
+        observador: String(report.data.observador ?? '').trim() || 'Scout no identificado',
+        fecha: String(report.data.fpartido || report.created_at.slice(0, 10))
+      }];
+    });
+
+  return entries.length ? { entries } : null;
 }
 
 export const attFields = d => {

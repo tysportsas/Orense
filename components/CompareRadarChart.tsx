@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 export interface CompareSeries {
   id: string;
   label: string;
@@ -20,8 +22,23 @@ function wrapLabel(t: string, max = 14) {
   return lines;
 }
 
+function hasCompleteValues(values: (number | null)[], length: number): values is number[] {
+  return values.length === length && values.every((value) => value != null);
+}
+
 /** Radar con varias series superpuestas (escala 1 a 5) para comparar tipos de informe o informes. */
-export default function CompareRadarChart({ axes, series }: { axes: string[]; series: CompareSeries[] }) {
+export default function CompareRadarChart({
+  axes,
+  series,
+  filterBySeries = false
+}: {
+  axes: string[];
+  series: CompareSeries[];
+  filterBySeries?: boolean;
+}) {
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
+  const selectedSeries = series.find((item) => item.id === selectedSeriesId);
+  const visibleSeries = selectedSeries ? [selectedSeries] : series;
   const n = axes.length;
   const W = 600,
     H = 440,
@@ -45,28 +62,43 @@ export default function CompareRadarChart({ axes, series }: { axes: string[]; se
           const [x, y] = pt(i, R);
           return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#d3dbd0" strokeWidth={1} />;
         })}
-        {series.map((s) => (
-          <g key={s.id}>
-            <polygon
-              points={s.values.map((v, i) => fmt(pt(i, (R * (v ?? 0)) / MAX))).join(' ')}
-              fill={s.color}
-              fillOpacity={0.14}
-              stroke={s.color}
-              strokeWidth={2.2}
-            />
-            {s.values.map((v, i) => {
-              if (v == null) return null;
-              const [x, y] = pt(i, (R * v) / MAX);
-              return (
-                <circle key={i} cx={x} cy={y} r={3.6} fill={s.color} stroke="#fff" strokeWidth={1.2}>
-                  <title>
-                    {s.label} · {axes[i]}: {v.toFixed(1)}
-                  </title>
-                </circle>
-              );
-            })}
-          </g>
-        ))}
+        {visibleSeries.map((s) => {
+          const values = s.values;
+          const complete = hasCompleteValues(values, n);
+          return (
+            <g key={s.id}>
+              {complete ? (
+                <polygon
+                  points={values.map((value, i) => fmt(pt(i, (R * value) / MAX))).join(' ')}
+                  fill={s.color}
+                  fillOpacity={0.14}
+                  stroke={s.color}
+                  strokeWidth={2.2}
+                />
+              ) : (
+                values.map((value, i) => {
+                  const nextIndex = (i + 1) % n;
+                  const nextValue = s.values[nextIndex];
+                  if (value == null || nextValue == null || n < 2) return null;
+                  const [x1, y1] = pt(i, (R * value) / MAX);
+                  const [x2, y2] = pt(nextIndex, (R * nextValue) / MAX);
+                  return <line key={`segment-${i}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={s.color} strokeWidth={2.2} />;
+                })
+              )}
+              {s.values.map((value, i) => {
+                if (value == null) return null;
+                const [x, y] = pt(i, (R * value) / MAX);
+                return (
+                  <circle key={i} cx={x} cy={y} r={3.6} fill={s.color} stroke="#fff" strokeWidth={1.2}>
+                    <title>
+                      {s.label} · {axes[i]}: {value.toFixed(1)}
+                    </title>
+                  </circle>
+                );
+              })}
+            </g>
+          );
+        })}
         {axes.map((label, i) => {
           const ang = -Math.PI / 2 + (i * 2 * Math.PI) / n;
           const c = Math.cos(ang),
@@ -87,14 +119,59 @@ export default function CompareRadarChart({ axes, series }: { axes: string[]; se
           );
         })}
       </svg>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center text-xs mt-1">
-        {series.map((s) => (
-          <span key={s.id} className="inline-flex items-center gap-1.5">
-            <i className="inline-block w-3 h-3 rounded-sm" style={{ background: s.color }} />
-            {s.label}
-          </span>
-        ))}
-      </div>
+      {filterBySeries ? (
+        <div className="flex flex-wrap gap-2 justify-center text-xs mt-1" role="group" aria-label="Filtrar radar por scout">
+          <button
+            type="button"
+            aria-pressed={!selectedSeries}
+            onClick={() => setSelectedSeriesId(null)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 border ${
+              !selectedSeries ? 'border-green bg-green/10 text-green' : 'border-line'
+            }`}
+          >
+            Todos los scouts
+          </button>
+          {series.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              aria-pressed={selectedSeries?.id === s.id}
+              onClick={() => setSelectedSeriesId((current) => (current === s.id ? null : s.id))}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 border ${
+                selectedSeries?.id === s.id ? 'border-green bg-green/10 text-green' : 'border-line'
+              }`}
+            >
+              <i className="inline-block w-3 h-3 rounded-sm" style={{ background: s.color }} />
+              {s.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center text-xs mt-1">
+          {series.map((s) => (
+            <span key={s.id} className="inline-flex items-center gap-1.5">
+              <i className="inline-block w-3 h-3 rounded-sm" style={{ background: s.color }} />
+              {s.label}
+            </span>
+          ))}
+        </div>
+      )}
+      {filterBySeries && selectedSeries && (
+        <div className="mt-3" aria-live="polite">
+          <p className="text-sm font-semibold mb-2">{selectedSeries.label} · valoración por atributo</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {axes.map((axis, index) => {
+              const value = selectedSeries.values[index];
+              return (
+                <div key={index} className="flex items-center justify-between gap-2 rounded-lg bg-surface2 border border-line px-3 py-2 text-sm">
+                  <span>{axis}</span>
+                  <b className="shrink-0">{value == null ? 'Sin dato' : `${value.toFixed(1)} / 5`}</b>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
+import CompareRadarChart from './CompareRadarChart';
 import RadarChart from './RadarChart';
 import PositionPitch from './PositionPitch';
 import RatingsAverageChart from './RatingsAverageChart';
 import { createClient } from '@/lib/supabase/client';
 import { signedPhotoUrl } from '@/lib/reports';
-import { fmtDate, LEVELS } from '@/lib/formModel';
+import { fmtDate, LEVELS, type CaracSummary } from '@/lib/formModel';
+import { scoutRadarColors, summarizeScoutRatings } from '@/lib/scoutRadarSummary';
 
 interface MatchCard {
   id: string;
@@ -31,7 +33,7 @@ interface MatchCard {
 interface Group {
   id: string;
   title: string;
-  series: { id: string; label: string; axes: { label: string; value: number; text: string }[]; nivel?: string; obs?: { label: string; text: string }[] }[];
+  series: { id: string; label: string; axes: { label: string; value: number; text: string }[]; nivel?: string; observador?: string; obs?: { label: string; text: string }[] }[];
 }
 
 interface ReportPreviewModalProps {
@@ -47,7 +49,7 @@ interface ReportPreviewModalProps {
   posY?: number;
   base: [string, string][];
   kpis: [string, string][];
-  carac?: { puesto: string; titulo: string; desc: string; obs: string } | null;
+  carac?: CaracSummary | null;
   matchCards: MatchCard[];
   groups: Group[];
 }
@@ -122,6 +124,7 @@ export default function ReportPreviewModal({
   const [photo, setPhoto] = useState<string | null>(null);
   const [crest, setCrest] = useState('/orense-crest.png');
   const [photoLoading, setPhotoLoading] = useState(false);
+  const scoutColors = scoutRadarColors(groups);
   // Refs para leer estado actual sin stale closure en callbacks asíncronos
   const photoLoadingRef = useRef(false);
   const photoRef = useRef<string | null>(null);           // siempre el dataUrl más reciente
@@ -420,17 +423,24 @@ export default function ReportPreviewModal({
             </div>
             {carac && (
               <div className="mt-2 bg-white border border-gray-200 rounded-lg p-2 text-xs">
-                <p className="font-bold text-emerald-900 uppercase">Caracterización de {carac.puesto}</p>
-                <p className="mt-0.5 text-gray-800">
-                  <b>{carac.titulo}</b>
-                  {carac.desc && <span className="text-gray-600"> — {carac.desc}</span>}
-                </p>
-                {carac.obs && (
-                  <p className="mt-1 text-gray-700 whitespace-pre-line">
-                    <b>Observación (informe N1): </b>
-                    {carac.obs}
-                  </p>
-                )}
+                <p className="font-bold text-emerald-900 uppercase">Caracterización y observaciones de scouts</p>
+                <div className="grid gap-1 mt-1">
+                  {carac.entries.map((entry) => (
+                    <article key={entry.id} className="rounded border border-gray-200 p-2 text-gray-800">
+                      <p className="flex flex-wrap justify-between gap-1">
+                        <b>{entry.observador}</b>
+                        <span className="text-gray-500">{entry.puesto} · {fmtDate(entry.fecha)}</span>
+                      </p>
+                      <p className="mt-0.5">
+                        <b>{entry.titulo}</b>
+                        {entry.desc && <span className="text-gray-600"> — {entry.desc}</span>}
+                      </p>
+                      <p className="mt-0.5 whitespace-pre-line">
+                        <b>Observación: </b>{entry.obs || 'Sin observación registrada.'}
+                      </p>
+                    </article>
+                  ))}
+                </div>
               </div>
             )}
           </section>
@@ -531,29 +541,43 @@ export default function ReportPreviewModal({
                 <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full mt-1 mb-2"></div>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                {groups.map((g) => (
-                  <div key={g.id} className="space-y-1 pdf-avoid">
-                    <h3 className="font-bold text-sm text-emerald-900 bg-emerald-50 p-1.5 rounded border-l-4 border-yellow-500">
-                      {g.title}
-                    </h3>
-                    {g.series.length > 0 && (
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-2">
-                        <div className="text-xs font-semibold text-gray-700 mb-1 p-1 bg-white rounded border-l-2 border-emerald-600">
-                          📅 {g.series[0].label}
+                {groups.map((g) => {
+                  const scoutSummary = summarizeScoutRatings(g.series, scoutColors);
+                  return (
+                    <div key={g.id} className="space-y-1 pdf-avoid">
+                      <h3 className="font-bold text-sm text-emerald-900 bg-emerald-50 p-1.5 rounded border-l-4 border-yellow-500">
+                        {g.title}
+                      </h3>
+                      {g.series.length > 0 && (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-2">
+                          {scoutSummary ? (
+                            <>
+                              <div className="text-xs font-semibold text-gray-700 mb-1 p-1 bg-white rounded border-l-2 border-emerald-600">
+                                Resumen por scout · {scoutSummary.reportCount} informes
+                              </div>
+                              <CompareRadarChart axes={scoutSummary.axes} series={scoutSummary.series} />
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-xs font-semibold text-gray-700 mb-1 p-1 bg-white rounded border-l-2 border-emerald-600">
+                                📅 {g.series[0].label}
+                              </div>
+                              <div style={{ width: '100%', marginTop: '8px' }}>
+                                <RadarChart axes={g.series[0].axes} />
+                              </div>
+                              {g.series[0].obs?.map((o, i) => (
+                                <p key={i} className="text-xs text-gray-700 mt-1 bg-white rounded border border-gray-200 p-1.5 whitespace-pre-line">
+                                  <b>{o.label}: </b>
+                                  {o.text}
+                                </p>
+                              ))}
+                            </>
+                          )}
                         </div>
-                        <div style={{ width: '100%', marginTop: '8px' }}>
-                          <RadarChart axes={g.series[0].axes} />
-                        </div>
-                        {g.series[0].obs?.map((o, i) => (
-                          <p key={i} className="text-xs text-gray-700 mt-1 bg-white rounded border border-gray-200 p-1.5 whitespace-pre-line">
-                            <b>{o.label}: </b>
-                            {o.text}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}

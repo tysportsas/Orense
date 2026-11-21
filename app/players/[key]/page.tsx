@@ -113,7 +113,14 @@ export default async function PlayerDashboardPage({ params }: { params: { key: s
           const serialDate = excelSerialDate(s.report.data.partido);
           const date = s.report.data.fpartido || serialDate;
           const match = serialDate ? 'Partido registrado' : s.report.data.partido || '';
-          return { id: s.report.id, obs: s.obs, label: `${date ? fmtDate(date) : 'Sin fecha'}, ${match}`, axes: s.axes, nivel: LEVELS[nivel(s.report.data) - 1]?.short };
+          return {
+            id: s.report.id,
+            obs: s.obs,
+            label: `${date ? fmtDate(date) : 'Sin fecha'}, ${match}`,
+            axes: s.axes,
+            nivel: LEVELS[nivel(s.report.data) - 1]?.short,
+            observador: s.report.data.observador
+          };
         }) }))}
       />
     </div>

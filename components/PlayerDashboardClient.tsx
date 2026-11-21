@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { signedPhotoUrl, getReport, updateReport } from '@/lib/reports';
+import { fmtDate, type CaracSummary } from '@/lib/formModel';
+import { scoutRadarColors, summarizeScoutRatings } from '@/lib/scoutRadarSummary';
 import RadarChart from './RadarChart';
+import CompareRadarChart from './CompareRadarChart';
 import RatingsAverageChart from './RatingsAverageChart';
 import PositionPitch from './PositionPitch';
 
@@ -29,7 +32,7 @@ interface MatchCard {
 interface Group {
   id: string;
   title: string;
-  series: { id: string; label: string; axes: { label: string; value: number; text: string }[]; nivel?: string; obs?: { label: string; text: string }[] }[];
+  series: { id: string; label: string; axes: { label: string; value: number; text: string }[]; nivel?: string; observador?: string; obs?: { label: string; text: string }[] }[];
 }
 
 function Badge({ v }: { v?: string }) {
@@ -90,13 +93,15 @@ export default function PlayerDashboardClient({
   posY?: number;
   base: [string, string][];
   kpis: [string, string][];
-  carac?: { puesto: string; titulo: string; desc: string; obs: string } | null;
+  carac?: CaracSummary | null;
   matchCards: MatchCard[];
   groups: Group[];
 }) {
   const [photo, setPhoto] = useState<string | null>(null);
   const [pick, setPick] = useState<Record<string, string>>({});
+  const [radarMode, setRadarMode] = useState<Record<string, 'scout' | 'report'>>({});
   const [posStatus, setPosStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const scoutColors = scoutRadarColors(groups);
 
   async function handlePositionChange(x: number, y: number) {
     if (!puestoReportId) return;
@@ -164,17 +169,25 @@ export default function PlayerDashboardClient({
             </div>
             {carac && (
               <div className="mt-4 bg-surface2 border border-line rounded-xl p-4">
-                <h4 className="font-display font-bold text-lg">Caracterización de {carac.puesto}</h4>
-                <p className="mt-1">
-                  <b>{carac.titulo}</b>
-                  {carac.desc && <span className="text-sm text-muted"> — {carac.desc}</span>}
-                </p>
-                {carac.obs && (
-                  <p className="text-sm mt-2 whitespace-pre-line">
-                    <b className="text-xs uppercase text-muted">Observación (informe N1): </b>
-                    {carac.obs}
-                  </p>
-                )}
+                <h4 className="font-display font-bold text-lg">Caracterización y observaciones de scouts</h4>
+                <div className="grid gap-2 mt-2">
+                  {carac.entries.map((entry) => (
+                    <article key={entry.id} className="rounded-lg bg-white border border-line p-3">
+                      <div className="flex flex-wrap justify-between gap-1 text-sm">
+                        <b>{entry.observador}</b>
+                        <span className="text-xs text-muted">{entry.puesto} · {fmtDate(entry.fecha)}</span>
+                      </div>
+                      <p className="mt-1">
+                        <b>{entry.titulo}</b>
+                        {entry.desc && <span className="text-sm text-muted"> — {entry.desc}</span>}
+                      </p>
+                      <p className="text-sm mt-1 whitespace-pre-line">
+                        <b className="text-xs uppercase text-muted">Observación: </b>
+                        {entry.obs || 'Sin observación registrada.'}
+                      </p>
+                    </article>
+                  ))}
+                </div>
               </div>
             )}
             <RatingsAverageChart cards={matchCards} groups={groups} />
@@ -265,6 +278,8 @@ export default function PlayerDashboardClient({
         <div className="grid gap-4 sm:grid-cols-2">
           {groups.map((g) => {
             const cur = g.series.find((s) => s.id === pick[g.id]) || g.series[0];
+            const scoutSummary = summarizeScoutRatings(g.series, scoutColors);
+            const showScoutSummary = Boolean(scoutSummary && radarMode[g.id] !== 'report');
             return (
               <div key={g.id} className="bg-surface border border-line rounded-2xl p-4">
                 <h3 className="font-display font-bold text-xl">{g.title}</h3>
@@ -274,33 +289,69 @@ export default function PlayerDashboardClient({
                   </p>
                 ) : (
                   <>
-                    {g.series.length > 1 && (
+                    {scoutSummary && (
                       <div className="flex flex-wrap gap-1.5 my-2">
-                        {g.series.map((s) => (
-                          <button
-                            key={s.id}
-                            onClick={() => setPick((p) => ({ ...p, [g.id]: s.id }))}
-                            className={`text-xs rounded-full px-3 py-1 border ${
-                              s.id === cur.id ? 'bg-green text-white border-green' : 'border-line'
-                            }`}
-                          >
-                            {s.label}
-                          </button>
-                        ))}
+                        <button
+                          type="button"
+                          aria-pressed={showScoutSummary}
+                          onClick={() => setRadarMode((current) => ({ ...current, [g.id]: 'scout' }))}
+                          className={`text-xs rounded-full px-3 py-1 border ${
+                            showScoutSummary ? 'bg-green text-white border-green' : 'border-line'
+                          }`}
+                        >
+                          Resumen por scout
+                        </button>
+                        <button
+                          type="button"
+                          aria-pressed={!showScoutSummary}
+                          onClick={() => setRadarMode((current) => ({ ...current, [g.id]: 'report' }))}
+                          className={`text-xs rounded-full px-3 py-1 border ${
+                            !showScoutSummary ? 'bg-green text-white border-green' : 'border-line'
+                          }`}
+                        >
+                          Ver por informe
+                        </button>
                       </div>
                     )}
-                    <p className="text-sm text-muted mb-2">
-                      {cur.nivel}, {cur.label}. Promedio{' '}
-                      {(cur.axes.reduce((a, x) => a + x.value, 0) / cur.axes.length).toFixed(1)} de 5 en {cur.axes.length}{' '}
-                      atributos.
-                    </p>
-                    <RadarChart axes={cur.axes} />
-                    {cur.obs?.map((o, i) => (
-                      <div key={i} className="mt-2 rounded-lg bg-surface2 border border-line p-3">
-                        <b className="text-xs uppercase text-muted">{o.label}</b>
-                        <p className="text-sm whitespace-pre-line mt-0.5">{o.text}</p>
-                      </div>
-                    ))}
+                    {showScoutSummary && scoutSummary ? (
+                      <>
+                        <p className="text-sm text-muted mb-2">
+                          Promedio por scout de {scoutSummary.reportCount} informes.
+                        </p>
+                        <CompareRadarChart axes={scoutSummary.axes} series={scoutSummary.series} filterBySeries />
+                      </>
+                    ) : (
+                      <>
+                        {g.series.length > 1 && (
+                          <div className="flex flex-wrap gap-1.5 my-2">
+                            {g.series.map((s) => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                onClick={() => setPick((p) => ({ ...p, [g.id]: s.id }))}
+                                className={`text-xs rounded-full px-3 py-1 border ${
+                                  s.id === cur.id ? 'bg-green text-white border-green' : 'border-line'
+                                }`}
+                              >
+                                {s.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-sm text-muted mb-2">
+                          {cur.nivel}, {cur.label}. Promedio{' '}
+                          {(cur.axes.reduce((a, x) => a + x.value, 0) / cur.axes.length).toFixed(1)} de 5 en {cur.axes.length}{' '}
+                          atributos.
+                        </p>
+                        <RadarChart axes={cur.axes} />
+                        {cur.obs?.map((o, i) => (
+                          <div key={i} className="mt-2 rounded-lg bg-surface2 border border-line p-3">
+                            <b className="text-xs uppercase text-muted">{o.label}</b>
+                            <p className="text-sm whitespace-pre-line mt-0.5">{o.text}</p>
+                          </div>
+                        ))}
+                      </>
+                    )}
                   </>
                 )}
               </div>
